@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build",
-    "typecheck": "npm --workspace apps/web run typecheck"
+    "typecheck": "npm --workspace apps/web run typecheck",
+    "test": "node --experimental-strip-types --test apps/web/src/core/daily-loop.test.mjs"
   },
   "overrides": {
     "postcss": "8.5.25",
