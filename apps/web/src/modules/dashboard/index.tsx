@@ -1,42 +1,65 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   BookOpen,
   CheckCircle2,
+  Circle,
   Clock3,
   Dumbbell,
   Languages,
   Sparkles,
 } from "lucide-react";
+import {
+  buildNextDaySuggestion,
+  completedTaskCount,
+  createEmptyDailyLoopState,
+  loadDailyLoop,
+  plannedMinutes,
+  type DailyLoopState,
+} from "@/core/daily-loop";
 
-const tasks = [
-  { label: "梳理 RAG 检索主线", module: "AI 学习", duration: "45 分钟" },
-  { label: "用英文解释 Agent", module: "英语进阶", duration: "25 分钟" },
-  { label: "完成一次训练记录", module: "健身训练", duration: "60 分钟" },
-];
+function displayDate(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(new Date(year, month - 1, day));
+}
 
-const growth = [
-  { label: "AI 产品能力", value: 62, tone: "purple" },
-  { label: "职业英语", value: 48, tone: "blue" },
-  { label: "身体训练", value: 56, tone: "green" },
-];
-
-// Dashboard consumes summaries only. Real task ownership remains in each
-// business module; later APIs should expose a stable DailySummary contract.
 export function DashboardModule() {
+  const [state, setState] = useState<DailyLoopState>(() => createEmptyDailyLoopState());
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    setState(loadDailyLoop(window.localStorage));
+    setHydrated(true);
+  }, []);
+
+  const completed = completedTaskCount(state);
+  const total = state.tasks.length;
+  const completion = total ? Math.round((completed / total) * 100) : 0;
+
   return (
     <section className="page-stack">
       <header className="page-header dashboard-header">
         <div>
-          <span className="eyebrow">MONDAY · PERSONAL WORKSPACE</span>
-          <h1>今天，继续向目标靠近。</h1>
-          <p>先完成最重要的三件事，再让 GrowPilot 根据结果调整下一步。</p>
+          <span className="eyebrow">{displayDate(state.activeDate)}</span>
+          <h1>{state.goal ? "今天，继续向目标靠近。" : "先确定今天真正重要的事。"}</h1>
+          <p>
+            {state.goal
+              ? `当前目标：${state.goal}`
+              : "进入 AI 学习模块，设置一个阶段目标和今天可以投入的时间。"}
+          </p>
         </div>
         <div className="focus-score">
           <Sparkles size={18} />
           <span>
             <small>今日完成度</small>
-            <strong>0 / 3</strong>
+            <strong>{hydrated ? `${completed} / ${total}` : "加载中"}</strong>
           </span>
         </div>
       </header>
@@ -44,69 +67,61 @@ export function DashboardModule() {
       <div className="dashboard-grid">
         <article className="panel task-panel">
           <div className="panel-heading">
-            <div>
-              <span className="eyebrow">TODAY</span>
-              <h2>今日行动</h2>
-            </div>
-            <span className="subtle-badge"><Clock3 size={14} /> 约 2 小时 10 分</span>
+            <div><span className="eyebrow">TODAY</span><h2>今日行动</h2></div>
+            <span className="subtle-badge"><Clock3 size={14} /> {plannedMinutes(state)} 分钟</span>
           </div>
-          <div className="task-list">
-            {tasks.map((task, index) => (
-              <div className="task-row" key={task.label}>
-                <span className="task-check">{index + 1}</span>
-                <div>
-                  <strong>{task.label}</strong>
-                  <small>{task.module} · {task.duration}</small>
+          {state.tasks.length ? (
+            <div className="task-list">
+              {state.tasks.map((task) => (
+                <div className="task-row" key={task.id}>
+                  <span className={task.completedAt ? "task-check done" : "task-check"}>
+                    {task.completedAt ? <CheckCircle2 size={16} /> : <Circle size={14} />}
+                  </span>
+                  <div>
+                    <strong className={task.completedAt ? "completed-text" : ""}>{task.title}</strong>
+                    <small>AI 学习 · {task.durationMinutes} 分钟</small>
+                  </div>
+                  <span className="task-status">{task.completedAt ? "完成" : "待办"}</span>
                 </div>
-                <CheckCircle2 size={20} className="muted-icon" />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <p>还没有今天的行动任务。</p>
+              <Link className="text-link" href="/learning">创建今日任务 <ArrowUpRight size={15} /></Link>
+            </div>
+          )}
         </article>
 
         <article className="panel coach-panel">
-          <span className="eyebrow light">AI COACH</span>
-          <h2>今天的建议</h2>
-          <p>
-            先用自己的话解释 RAG，再去补资料。输出一次比重复阅读更容易暴露真正的知识缺口。
-          </p>
-          <span className="coach-footnote">当前为演示建议，尚未接入模型。</span>
+          <span className="eyebrow light">RULE-BASED GUIDE</span>
+          <h2>下一步建议</h2>
+          <p>{buildNextDaySuggestion(state)}</p>
+          <span className="coach-footnote">当前由透明规则生成，尚未调用模型。</span>
         </article>
 
         <article className="panel growth-panel">
           <div className="panel-heading">
-            <div>
-              <span className="eyebrow">PROGRESS</span>
-              <h2>成长维度</h2>
-            </div>
-            <span className="demo-label">演示数据</span>
+            <div><span className="eyebrow">LOOP STATUS</span><h2>今日闭环</h2></div>
+            <strong>{completion}%</strong>
           </div>
-          <div className="progress-list">
-            {growth.map((item) => (
-              <div className="progress-item" key={item.label}>
-                <div>
-                  <span>{item.label}</span>
-                  <strong>{item.value}%</strong>
-                </div>
-                <div className="progress-track">
-                  <span className={item.tone} style={{ width: `${item.value}%` }} />
-                </div>
-              </div>
-            ))}
+          <div className="progress-track large"><span className="purple" style={{ width: `${completion}%` }} /></div>
+          <div className="loop-checks">
+            <span className={state.goal ? "ready" : ""}>目标</span>
+            <span className={state.tasks.length ? "ready" : ""}>行动</span>
+            <span className={state.review ? "ready" : ""}>复盘</span>
+            <span className={state.history.length ? "ready" : ""}>调整</span>
           </div>
         </article>
 
         <article className="panel modules-panel">
           <div className="panel-heading">
-            <div>
-              <span className="eyebrow">WORKSPACES</span>
-              <h2>快速进入</h2>
-            </div>
+            <div><span className="eyebrow">WORKSPACES</span><h2>快速进入</h2></div>
           </div>
           <div className="quick-links">
-            <Link href="/learning"><BookOpen size={18} /><span>AI 学习<small>路线与复盘</small></span><ArrowUpRight size={16} /></Link>
-            <Link href="/english"><Languages size={18} /><span>英语进阶<small>阅读与表达</small></span><ArrowUpRight size={16} /></Link>
-            <Link href="/fitness"><Dumbbell size={18} /><span>健身训练<small>计划与记录</small></span><ArrowUpRight size={16} /></Link>
+            <Link href="/learning"><BookOpen size={18} /><span>AI 学习<small>目标、任务与复盘</small></span><ArrowUpRight size={16} /></Link>
+            <Link href="/english"><Languages size={18} /><span>英语进阶<small>下一阶段开放</small></span><ArrowUpRight size={16} /></Link>
+            <Link href="/fitness"><Dumbbell size={18} /><span>健身训练<small>下一阶段开放</small></span><ArrowUpRight size={16} /></Link>
           </div>
         </article>
       </div>
