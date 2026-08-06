@@ -28,34 +28,22 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 /**
- * Read the initial theme from the html attribute set by the FOUC bootstrap
- * script in layout.tsx. Server-render has no document, so it returns the
- * static default — matching the SSR HTML exactly (hydration-safe).
- */
-function initialThemeFromDom(): Theme {
-  if (typeof document === "undefined") return "day";
-  const attr = document.documentElement.getAttribute("data-theme");
-  return attr === "night" || attr === "dusk" ? attr : "day";
-}
-
-function initialMotionFromDom(): Motion {
-  if (typeof document === "undefined") return "system";
-  const attr = document.documentElement.getAttribute("data-motion");
-  return attr === "full" || attr === "reduced" || attr === "off" ? attr : "system";
-}
-
-/**
  * ThemeProvider owns theme and motion preference state, persists it through
  * the settings storage keys, and keeps html[data-theme]/data-motion in sync.
  *
- * Hydration-safe strategy:
- * - Initial state reads the html attribute already set by the FOUC bootstrap
- *   script, so server HTML and first client render agree (no mismatch).
- * - Stored preference is loaded in useEffect to keep state authoritative.
+ * Hydration-safe strategy (fixes the "theme-option active" mismatch):
+ * - Initial state is the STATIC default ("day"/"system"), which exactly
+ *   matches the server-rendered HTML. React hydration therefore always
+ *   agrees — no mismatch, no abandoned tree, no dead buttons.
+ * - The FOUC bootstrap script in layout.tsx already set html[data-theme]
+ *   from localStorage before hydration, so the visual theme is correct on
+ *   first paint with no flash.
+ * - The real stored preference is loaded in useEffect and applied to both
+ *   React state and the DOM attribute (authoritative, idempotent).
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(initialThemeFromDom);
-  const [motion, setMotionState] = useState<Motion>(initialMotionFromDom);
+  const [theme, setThemeState] = useState<Theme>("day");
+  const [motion, setMotionState] = useState<Motion>("system");
 
   useEffect(() => {
     const storedTheme = loadTheme(window.localStorage);
