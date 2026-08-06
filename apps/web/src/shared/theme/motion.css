@@ -1,0 +1,15 @@
+/* Motion modes: full (default), reduced, off, system.
+   System mode honors prefers-reduced-motion; reduced and off disable motion. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-motion="system"] {
+    --motion-transition: 0ms;
+  }
+}
+
+html[data-motion="reduced"] {
+  --motion-transition: 0ms;
+}
+
+html[data-motion="off"] {
+  --motion-transition: 0ms;
+}

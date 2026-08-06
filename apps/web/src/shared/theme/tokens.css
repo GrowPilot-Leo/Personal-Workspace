@@ -1,0 +1,61 @@
+/* Foundation + semantic tokens — Day theme is the default. */
+:root {
+  /* semantic tokens (business modules use these only) */
+  --color-bg-canvas: #f7f4ee;
+  --color-bg-surface: #ffffff;
+  --color-text-primary: #23332c;
+  --color-text-muted: #69736f;
+  --color-action-primary: #2f8f5b;
+  --color-ai-accent: #6147d7;
+  --color-success: #2b8a63;
+  --color-warning: #b7791f;
+  --color-danger: #c2453a;
+
+  /* component tokens (shell UI only) */
+  --sidebar-bg: rgba(255, 255, 255, 0.92);
+  --nav-active-bg: #eef3ee;
+  --nav-active-text: #23543a;
+  --nav-hover-bg: #f0f1ee;
+  --card-bg: #ffffff;
+  --card-border: #e4e9e6;
+  --brand-bg: #2f8f5b;
+  --brand-text: #ffffff;
+
+  /* motion */
+  --motion-transition: 180ms ease;
+
+  /* legacy V1 variables mapped onto the day palette (kept for V1 modules) */
+  --ink: #23332c;
+  --muted: #69736f;
+  --line: #e4e9e6;
+  --surface: #ffffff;
+  --canvas: #f7f4ee;
+  --brand: #2f8f5b;
+  --brand-soft: #eef3ee;
+  --deep: #23332c;
+  --green: #2b8a63;
+  --blue: #3679db;
+  --shadow: 0 16px 40px rgba(31, 45, 39, 0.07);
+
+  /* shadcn/ui semantic tokens (HSL triplets) — mapped onto the day palette */
+  --background: 44 33% 97%;
+  --foreground: 150 15% 16%;
+  --card: 0 0% 100%;
+  --card-foreground: 150 15% 16%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 150 15% 16%;
+  --primary: 152 51% 37%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 150 14% 93%;
+  --secondary-foreground: 150 15% 20%;
+  --muted: 150 14% 93%;
+  --muted-foreground: 150 8% 44%;
+  --accent: 150 14% 93%;
+  --accent-foreground: 150 15% 20%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 150 12% 88%;
+  --input: 150 12% 88%;
+  --ring: 152 51% 37%;
+  --radius: 0.75rem;
+}

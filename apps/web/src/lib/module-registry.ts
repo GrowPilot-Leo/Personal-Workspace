@@ -1,10 +1,13 @@
 export type ModuleKey =
-  | "dashboard"
+  | "today"
   | "learning"
+  | "career"
   | "english"
   | "fitness"
+  | "review"
   | "knowledge"
-  | "llm-provider";
+  | "badge"
+  | "settings";
 
 export type ModuleDefinition = {
   key: ModuleKey;
@@ -18,45 +21,66 @@ export type ModuleDefinition = {
 // inside their owning module to prevent the shell from becoming a god object.
 export const moduleRegistry: ModuleDefinition[] = [
   {
-    key: "dashboard",
-    label: "成长总览",
-    shortLabel: "总览",
-    href: "/dashboard",
-    description: "今日行动与成长进度",
+    key: "today",
+    label: "今日",
+    shortLabel: "今日",
+    href: "/today",
+    description: "今日行动与复盘",
   },
   {
     key: "learning",
-    label: "AI 学习",
+    label: "学习中心",
     shortLabel: "学习",
     href: "/learning",
-    description: "路线、任务与学习复盘",
+    description: "可配置学习空间",
+  },
+  {
+    key: "career",
+    label: "职业成长",
+    shortLabel: "职业",
+    href: "/career",
+    description: "目标、技能与证据",
   },
   {
     key: "english",
     label: "英语进阶",
     shortLabel: "英语",
     href: "/english",
-    description: "技术阅读与职业表达",
+    description: "听说读写综合提升",
   },
   {
     key: "fitness",
     label: "健身训练",
     shortLabel: "健身",
     href: "/fitness",
-    description: "身体档案与训练记录",
+    description: "身体档案与训练计划",
+  },
+  {
+    key: "review",
+    label: "复盘中心",
+    shortLabel: "复盘",
+    href: "/review",
+    description: "日周月复盘",
   },
   {
     key: "knowledge",
     label: "知识库",
     shortLabel: "知识",
     href: "/knowledge",
-    description: "资料导入、检索与引用",
+    description: "资料、检索与引用",
   },
   {
-    key: "llm-provider",
-    label: "模型配置",
-    shortLabel: "模型",
-    href: "/llm-providers",
-    description: "可插拔 LLM Provider",
+    key: "badge",
+    label: "徽章",
+    shortLabel: "徽章",
+    href: "/badge",
+    description: "可追溯的成长证据",
+  },
+  {
+    key: "settings",
+    label: "设置",
+    shortLabel: "设置",
+    href: "/settings",
+    description: "外观、模型与数据",
   },
 ];

@@ -1,5 +1,6 @@
-import { DashboardModule } from "@/modules/dashboard";
+import { redirect } from "next/navigation";
 
+// Workbench home is the Bento Grid dashboard.
 export default function HomePage() {
-  return <DashboardModule />;
+  redirect("/dashboard");
 }
