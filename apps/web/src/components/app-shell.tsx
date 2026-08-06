@@ -4,59 +4,70 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Award,
   BookOpen,
-  BrainCircuit,
   Database,
   Dumbbell,
   Languages,
-  LayoutDashboard,
+  MoreHorizontal,
+  RotateCcw,
   Settings,
   Sparkles,
+  Sun,
+  Target,
 } from "lucide-react";
 import { moduleRegistry, type ModuleKey } from "@/lib/module-registry";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
-const icons: Record<ModuleKey, typeof LayoutDashboard> = {
-  dashboard: LayoutDashboard,
+const icons: Record<ModuleKey, typeof Sun> = {
+  today: Sun,
   learning: BookOpen,
+  career: Target,
   english: Languages,
   fitness: Dumbbell,
+  review: RotateCcw,
   knowledge: Database,
-  "llm-provider": BrainCircuit,
+  badge: Award,
+  settings: Settings,
 };
 
-const mobileKeys: ModuleKey[] = ["dashboard", "learning", "english", "fitness", "knowledge"];
+// Mobile bottom bar shows the five primary modules; the rest live in a
+// "more" drawer (Task 6: responsive nine-module navigation).
+const mobilePrimaryKeys: ModuleKey[] = ["today", "learning", "career", "english", "fitness"];
+const mobileMoreKeys: ModuleKey[] = ["review", "knowledge", "badge", "settings"];
 
 function isActive(pathname: string, href: string, key: ModuleKey) {
-  return pathname === href || (pathname === "/" && key === "dashboard");
+  return pathname === href || (pathname === "/" && key === "today");
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
+  const renderNavItem = (module: (typeof moduleRegistry)[number]) => {
+    const Icon = icons[module.key];
+    const active = isActive(pathname, module.href, module.key);
+    return (
+      <Link
+        className={active ? "nav-item active" : "nav-item"}
+        href={module.href}
+        key={module.key}
+      >
+        <Icon size={18} aria-hidden="true" />
+        <span><strong>{module.label}</strong><small>{module.description}</small></span>
+      </Link>
+    );
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="主导航">
-        <Link className="brand" href="/dashboard" aria-label="GrowPilot 首页">
+        <Link className="brand" href="/today" aria-label="GrowPilot 首页">
           <span className="brand-mark"><Sparkles size={18} /></span>
           <span><strong>GrowPilot</strong><small>Personal Growth OS</small></span>
         </Link>
 
         <nav className="nav-list">
-          {moduleRegistry.map((module) => {
-            const Icon = icons[module.key];
-            const active = isActive(pathname, module.href, module.key);
-            return (
-              <Link
-                className={active ? "nav-item active" : "nav-item"}
-                href={module.href}
-                key={module.key}
-              >
-                <Icon size={18} aria-hidden="true" />
-                <span><strong>{module.label}</strong><small>{module.description}</small></span>
-              </Link>
-            );
-          })}
+          {moduleRegistry.map(renderNavItem)}
         </nav>
 
         <div className="sidebar-footer">
@@ -72,7 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="mobile-header">
           <span className="brand-mark mobile-brand-mark"><Sparkles size={16} /></span>
           <strong>GrowPilot</strong>
-          <Link className="icon-link" href="/llm-providers" aria-label="模型设置">
+          <Link className="icon-link" href="/settings" aria-label="设置">
             <Settings size={19} />
           </Link>
         </header>
@@ -81,7 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="mobile-nav" aria-label="移动端主导航">
         {moduleRegistry
-          .filter((module) => mobileKeys.includes(module.key))
+          .filter((module) => mobilePrimaryKeys.includes(module.key))
           .map((module) => {
             const Icon = icons[module.key];
             const active = isActive(pathname, module.href, module.key);
@@ -96,6 +107,17 @@ export function AppShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
+        <details className="mobile-more">
+          <summary className="mobile-nav-item" aria-label="更多模块">
+            <MoreHorizontal size={19} aria-hidden="true" />
+            <span>更多</span>
+          </summary>
+          <div className="mobile-more-panel">
+            {moduleRegistry
+              .filter((module) => mobileMoreKeys.includes(module.key))
+              .map(renderNavItem)}
+          </div>
+        </details>
       </nav>
     </div>
   );

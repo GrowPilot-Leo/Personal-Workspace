@@ -304,6 +304,15 @@ button, input, textarea, select { font: inherit; }
     color: var(--color-text-muted); border-radius: 9px; font-size: 9px;
   }
   .mobile-nav-item.active { color: var(--color-ai-accent); background: var(--nav-active-bg); }
+  .mobile-more { position: relative; }
+  .mobile-more summary { list-style: none; cursor: pointer; }
+  .mobile-more summary::-webkit-details-marker { display: none; }
+  .mobile-more-panel {
+    position: fixed; left: 8px; right: 8px; bottom: calc(max(7px, env(safe-area-inset-bottom)) + 68px);
+    z-index: 30; display: grid; gap: 4px; padding: 12px;
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
   .main-content { padding-bottom: 100px; }
   .form-grid, .task-form, .next-day-panel { grid-template-columns: 1fr; }
   .review-form .primary-button, .next-day-panel .secondary-button { width: 100%; }
