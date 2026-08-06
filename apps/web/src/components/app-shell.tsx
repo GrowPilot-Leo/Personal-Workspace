@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { moduleRegistry, type ModuleKey } from "@/lib/module-registry";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 const icons: Record<ModuleKey, typeof LayoutDashboard> = {
   dashboard: LayoutDashboard,
@@ -58,9 +59,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="sidebar-note">
-          <span className="status-dot" />
-          <span>MVP 每日闭环</span>
+        <div className="sidebar-footer">
+          <ThemeSwitcher />
+          <div className="sidebar-note">
+            <span className="status-dot" />
+            <span>V2 演示 · 本地数据</span>
+          </div>
         </div>
       </aside>
 
