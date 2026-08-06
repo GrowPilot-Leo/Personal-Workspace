@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app-shell";
 import { PwaRegister } from "@/components/pwa-register";
+import { ThemeProvider } from "@/shared/theme/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,12 +20,27 @@ export const viewport: Viewport = {
   themeColor: "#6147d7",
 };
 
+// FOUC-prevention bootstrap: read persisted theme/motion before React
+// hydrates and set html attributes so the first paint uses the right theme.
+const THEME_BOOTSTRAP = `(function(){try{
+  var t=localStorage.getItem("growpilot.theme.v1");
+  var m=localStorage.getItem("growpilot.motion.v1");
+  var d=document.documentElement;
+  d.setAttribute("data-theme", t==="night"||t==="dusk" ? t : "day");
+  d.setAttribute("data-motion", m==="full"||m==="reduced"||m==="off" ? m : "system");
+}catch(e){}})();`;
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body>
         <PwaRegister />
-        <AppShell>{children}</AppShell>
+        <ThemeProvider>
+          <AppShell>{children}</AppShell>
+        </ThemeProvider>
       </body>
     </html>
   );
