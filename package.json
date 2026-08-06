@@ -11,7 +11,7 @@
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build",
     "typecheck": "npm --workspace apps/web run typecheck",
-    "test": "node --experimental-strip-types --test apps/web/src/core/daily-loop.test.mjs apps/web/src/core/migrations.test.mjs apps/web/src/core/contracts.test.mjs apps/web/src/modules/modules.test.mjs apps/web/src/shared/theme/theme.test.mjs apps/web/src/shared/theme/theme-storage.test.mjs apps/web/src/shared/theme/theme-provider.test.mjs apps/web/src/lib/module-registry.test.mjs apps/web/src/modules/today/ui/today-actions.test.mjs"
+    "test": "node --experimental-strip-types --test apps/web/src/core/daily-loop.test.mjs apps/web/src/core/migrations.test.mjs apps/web/src/core/contracts.test.mjs apps/web/src/modules/modules.test.mjs apps/web/src/shared/theme/theme.test.mjs apps/web/src/shared/theme/theme-storage.test.mjs apps/web/src/shared/theme/theme-provider.test.mjs apps/web/src/lib/module-registry.test.mjs apps/web/src/modules/today/ui/today-actions.test.mjs apps/web/src/lib/motion-variants.test.mjs apps/web/src/components/dashboard/dashboard-data.test.mjs"
   },
   "overrides": {
     "postcss": "8.5.25",

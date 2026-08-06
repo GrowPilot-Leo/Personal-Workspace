@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { AppShell } from "@/components/app-shell";
 import { PwaRegister } from "@/components/pwa-register";
 import { ThemeProvider } from "@/shared/theme/theme-provider";
+import { AppShell } from "@/components/layout/app-shell";
+import "@/styles/globals.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

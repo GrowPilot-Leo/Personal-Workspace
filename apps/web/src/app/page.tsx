@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 
-// V2 information architecture places Today at the root. The legacy dashboard
-// route remains at /dashboard for backward compatibility with V1 bookmarks.
+// Workbench home is the Bento Grid dashboard.
 export default function HomePage() {
-  redirect("/today");
+  redirect("/dashboard");
 }

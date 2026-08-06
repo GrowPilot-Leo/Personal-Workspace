@@ -1,4 +1,4 @@
-import { DashboardModule } from "@/modules/dashboard";
+import { DashboardModule } from "@/components/dashboard/dashboard";
 
 export default function DashboardPage() {
   return <DashboardModule />;
