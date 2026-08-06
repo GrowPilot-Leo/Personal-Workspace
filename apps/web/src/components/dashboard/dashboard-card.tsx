@@ -22,7 +22,7 @@ export function DashboardCard({ title, icon, action, className, children }: Dash
       transition={cardHover.transition}
       className={cn("h-full", className)}
     >
-      <Card className="h-full border-border bg-card/80 shadow-sm backdrop-blur-sm transition-shadow duration-200 hover:shadow-md">
+      <Card className="h-full border border-black/5 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="flex items-center gap-2 text-[13px] font-medium">
             {icon}

@@ -7,12 +7,13 @@
 
 html { background: var(--color-bg-canvas); }
 
+/* V1 legacy body background: keep it plain so it never layers a gradient
+   veil over the modern workbench (#F7F7F5 from styles/globals.css wins for
+   light mode; this only applies to legacy V1 pages). */
 body {
   margin: 0;
   color: var(--color-text-primary);
-  background:
-    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--color-ai-accent) 8%, transparent), transparent 24rem),
-    var(--color-bg-canvas);
+  background: var(--color-bg-canvas);
   font-family: Arial, "Microsoft YaHei", sans-serif;
 }
 
