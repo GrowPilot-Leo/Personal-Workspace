@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="flex-1 overflow-y-auto bg-white">
           <motion.div
             key={pathname}
-            initial={pageEnter.initial}
+            initial={false}
             animate={pageEnter.animate}
             exit={pageEnter.exit}
             transition={pageEnter.transition}
