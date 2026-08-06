@@ -11,6 +11,8 @@ import {
 import {
   loadMotion,
   loadTheme,
+  safeLoadMotion,
+  safeLoadTheme,
   saveMotion,
   saveTheme,
 } from "./theme-storage.ts";
@@ -33,12 +35,10 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
  * attributes before React hydrates; this provider then takes over.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() =>
-    loadTheme(window.localStorage),
-  );
-  const [motion, setMotionState] = useState<Motion>(() =>
-    loadMotion(window.localStorage),
-  );
+  // SSR-safe initializers: the bootstrap script already set html attributes
+  // before hydration, so defaults here avoid a server-side window crash.
+  const [theme, setThemeState] = useState<Theme>(() => safeLoadTheme());
+  const [motion, setMotionState] = useState<Motion>(() => safeLoadMotion());
 
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);

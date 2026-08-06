@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadMotion, loadTheme, saveMotion, saveTheme } from "./theme-storage.ts";
+import {
+  loadMotion,
+  loadTheme,
+  safeLoadMotion,
+  safeLoadTheme,
+  saveMotion,
+  saveTheme,
+} from "./theme-storage.ts";
 
 function memoryStorage(seed = {}) {
   const data = new Map(Object.entries(seed));
@@ -36,4 +43,28 @@ test("motion persistence round-trips and guards invalid values", () => {
   assert.equal(loadMotion(storage), "reduced");
   const bad = memoryStorage({ "growpilot.motion.v1": "high" });
   assert.equal(loadMotion(bad), "system");
+});
+
+// SSR safety: useState initializers run during server pre-render where
+// window.localStorage is undefined. The safe variants must not throw.
+test("safeLoadTheme returns defaults when window is unavailable", () => {
+  const originalWindow = globalThis.window;
+  globalThis.window = undefined;
+  try {
+    assert.equal(safeLoadTheme(), "day");
+    assert.equal(safeLoadMotion(), "system");
+  } finally {
+    globalThis.window = originalWindow;
+  }
+});
+
+test("safeLoadTheme reads real storage when window exists", () => {
+  const originalWindow = globalThis.window;
+  globalThis.window = { localStorage: memoryStorage({ "growpilot.theme.v1": "night" }) };
+  try {
+    assert.equal(safeLoadTheme(), "night");
+    assert.equal(safeLoadMotion(), "system");
+  } finally {
+    globalThis.window = originalWindow;
+  }
 });
