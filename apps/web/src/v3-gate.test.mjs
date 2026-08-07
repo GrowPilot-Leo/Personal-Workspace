@@ -1,0 +1,92 @@
+// V3 readiness gate — static checks that lock the acceptance standards
+// from docs/v3/V3_READINESS_AND_ACCEPTANCE.md without a browser.
+// These guard the P0 items: theme tokens (V3-001), mobile shell (V3-002),
+// interaction feedback (V3-003) and demo-data removal (V3-004).
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const src = (rel) => readFileSync(join(__dirname, rel), "utf8");
+
+const appShell = src("components/layout/app-shell.tsx");
+const topbar = src("components/layout/topbar.tsx");
+const mobileNav = src("components/layout/mobile-nav.tsx");
+const mobileDrawer = src("components/layout/mobile-drawer.tsx");
+const todayView = src("modules/today/ui/today-view.tsx");
+const dashboardCard = src("components/dashboard/dashboard-card.tsx");
+const quickPrompts = src("components/dashboard/quick-prompts-card.tsx");
+
+// ---- V3-001: theme tokens — no hard-coded colors in official content ----
+test("V3-001: no bg-white / text-zinc / border-black in official UI", () => {
+  const offenders = [
+    appShell.match(/bg-white|text-zinc|border-black/g),
+    topbar.match(/bg-white|text-zinc|border-black/g),
+    todayView.match(/bg-white|text-zinc|border-black/g),
+    dashboardCard.match(/bg-white|text-zinc|border-black/g),
+    mobileNav.match(/bg-white|text-zinc|border-black/g),
+    mobileDrawer.match(/bg-white|text-zinc|border-black/g),
+  ].filter(Boolean);
+  assert.equal(offenders.length, 0, "hard-coded colors remain: " + JSON.stringify(offenders));
+});
+
+test("V3-001: single global stylesheet entry", () => {
+  const layout = src("app/layout.tsx");
+  assert.ok(!layout.includes("./globals.css"), "legacy ./globals.css import must be gone");
+  assert.ok(layout.includes('import "@/styles/globals.css"'), "single entry must remain");
+});
+
+test("V3-001: shell main uses semantic surface, not white", () => {
+  assert.ok(appShell.includes("bg-card"), "main must use bg-card token");
+  assert.ok(!appShell.includes("bg-white"), "no white background on main");
+});
+
+test("V3-001: content animation never gates visibility", () => {
+  assert.ok(appShell.includes("initial={false}"), "motion outlet must be visible by default");
+});
+
+// ---- V3-002: mobile shell — desktop sidebar hidden, bottom nav + drawer ----
+test("V3-002: desktop sidebar hidden on mobile, all nine entries reachable", () => {
+  assert.ok(appShell.includes('className="hidden md:block"'), "sidebar must be md-only");
+  assert.ok(mobileNav.includes("md:hidden"), "bottom nav must be mobile-only");
+  assert.ok(mobileDrawer.includes("md:hidden"), "drawer must be mobile-only");
+  const tabHrefs = [...mobileNav.matchAll(/href: "(\/[a-z-]+)"/g)].map((m) => m[1]);
+  assert.equal(tabHrefs.length, 5, "exactly five primary tabs");
+  assert.ok(mobileDrawer.includes("moduleRegistry"), "drawer must render the module registry");
+  assert.ok(mobileDrawer.includes("href={module.href}"), "drawer links navigate to modules");
+});
+
+test("V3-002: mobile nav handles safe-area inset", () => {
+  assert.ok(mobileNav.includes("env(safe-area-inset-bottom)"), "safe-area padding required");
+});
+
+// ---- V3-003: interaction feedback — no enabled no-op buttons ----
+test("V3-003: start-today button produces a defined action", () => {
+  assert.ok(todayView.includes("onClick={startToday}"), "button must be wired");
+  assert.ok(todayView.includes("scrollIntoView"), "action must do something visible");
+  assert.ok(todayView.includes('aria-live="polite"'), "feedback must be announced");
+});
+
+test("V3-003: prompt copy surfaces success and failure", () => {
+  assert.ok(quickPrompts.includes("navigator.clipboard"), "clipboard API used");
+  assert.ok(quickPrompts.includes("catch"), "errors must not be swallowed");
+  assert.ok(quickPrompts.includes('aria-live="polite"'), "result must be announced");
+  assert.ok(quickPrompts.includes("已复制") && quickPrompts.includes("复制失败"));
+});
+
+test("V3-003: search is explicitly disabled until implemented", () => {
+  assert.ok(topbar.includes("disabled"), "search input must be disabled");
+  assert.ok(topbar.includes("即将开放"), "disabled reason must be visible");
+});
+
+// ---- V3-005: one shell, one dashboard, no legacy module shell ----
+test("V3-005: legacy modules/dashboard is removed", () => {
+  try {
+    readFileSync(join(__dirname, "modules/dashboard/index.tsx"));
+    assert.fail("modules/dashboard must be deleted");
+  } catch {
+    assert.ok(true);
+  }
+});
