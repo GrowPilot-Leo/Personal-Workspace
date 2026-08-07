@@ -2,28 +2,20 @@
 
 import { BookOpen } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
-import { demoLearningProgress } from "@/components/dashboard/dashboard-data";
 
-/** 学习进度 — demo rows with progress bars (backend lands in Stage 3). */
+/**
+ * 学习进度 — honest empty state until the configurable Learning Space
+ * (Stage 3) provides real, traceable progress. No invented percentages.
+ */
 export function LearningProgressCard() {
   return (
     <DashboardCard title="学习进度" icon={<BookOpen size={14} className="text-primary" />}>
-      <ul className="space-y-3">
-        {demoLearningProgress.map((item) => (
-          <li key={item.id}>
-            <div className="mb-1 flex items-center justify-between text-[12px]">
-              <span className="truncate">{item.title}</span>
-              <span className="text-muted-foreground">{item.progress}%</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-500"
-                style={{ width: `${item.progress}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+      <div className="rounded-lg border border-dashed border-border p-4 text-center">
+        <p className="text-[13px] text-muted-foreground">暂无学习记录</p>
+        <p className="mt-1 text-[11px] text-muted-foreground/80">
+          进入学习中心创建第一个主题后，进度会显示在这里。
+        </p>
+      </div>
     </DashboardCard>
   );
 }

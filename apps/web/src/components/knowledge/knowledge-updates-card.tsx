@@ -2,20 +2,20 @@
 
 import { Database } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
-import { demoKnowledgeUpdates } from "@/components/dashboard/dashboard-data";
 
-/** 知识库最近更新 — demo rows (RAG backend lands in Stage 4). */
+/**
+ * 知识库最近更新 — honest empty state until the knowledge module
+ * provides real entries. No invented titles or timestamps.
+ */
 export function KnowledgeUpdatesCard() {
   return (
     <DashboardCard title="知识库最近更新" icon={<Database size={14} className="text-primary" />}>
-      <ul className="space-y-2.5">
-        {demoKnowledgeUpdates.map((item) => (
-          <li key={item.id} className="flex items-center justify-between gap-2 text-[13px]">
-            <span className="min-w-0 truncate">{item.title}</span>
-            <span className="shrink-0 text-[11px] text-muted-foreground">{item.updatedAt}</span>
-          </li>
-        ))}
-      </ul>
+      <div className="rounded-lg border border-dashed border-border p-4 text-center">
+        <p className="text-[13px] text-muted-foreground">知识库还没有内容</p>
+        <p className="mt-1 text-[11px] text-muted-foreground/80">
+          保存第一条资料后，最近的更新会显示在这里。
+        </p>
+      </div>
     </DashboardCard>
   );
 }
