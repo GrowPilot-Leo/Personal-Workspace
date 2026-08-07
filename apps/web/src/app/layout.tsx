@@ -4,7 +4,6 @@ import { PwaRegister } from "@/components/pwa-register";
 import { ThemeProvider } from "@/shared/theme/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import "@/styles/globals.css";
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "GrowPilot", template: "%s · GrowPilot" },
