@@ -117,6 +117,21 @@ test("calm day theme is the default and themes persist on refresh", async ({ pag
   await expect(page.locator("html")).toHaveAttribute("data-theme", "day");
 });
 
+test("learning only plans tasks and hands execution to Today", async ({ page }) => {
+  await page.goto("/learning");
+
+  await page.getByLabel("阶段目标").fill("完成知识库信息架构");
+  await page.getByLabel("具体任务").fill("画出知识流转图");
+  await page.getByRole("button", { name: "加入今日" }).click();
+
+  await expect(page.locator('[aria-live="polite"]')).toContainText("已加入今日：画出知识流转图");
+  await expect(page.getByRole("button", { name: "保存复盘" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "归档并开始下一天" })).toHaveCount(0);
+
+  await page.getByRole("link", { name: "前往今日执行" }).click();
+  await expect(page.getByRole("list", { name: "今日时间线" })).toContainText("画出知识流转图");
+});
+
 test("today starts the next real task and can complete it inline", async ({ page }) => {
   await page.addInitScript(
     ({ key, value }) => window.localStorage.setItem(key, value),
