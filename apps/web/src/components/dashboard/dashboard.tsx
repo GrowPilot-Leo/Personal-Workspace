@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createEmptyDailyLoopState, loadDailyLoop, type DailyLoopState } from "@/core/daily-loop";
+import { createEmptyDailyLoopState, type DailyLoopState } from "@/core/daily-loop";
+import { createWorkspaceRepository } from "@/core/persistence";
 import { buildDashboardData } from "@/components/dashboard/dashboard-data";
 import { BentoGrid, BentoCell } from "@/components/dashboard/bento-grid";
 import { TodayFocusCard } from "@/components/dashboard/today-focus-card";
@@ -23,7 +24,7 @@ export function DashboardModule() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setState(loadDailyLoop(window.localStorage));
+    setState(createWorkspaceRepository(window.localStorage).loadDailyLoop());
     setHydrated(true);
   }, []);
 
