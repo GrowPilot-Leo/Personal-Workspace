@@ -87,11 +87,11 @@ test("390px mobile shell keeps content in the viewport and prioritizes daily-loo
 test("desktop sidebar and mobile bottom navigation are mutually exclusive", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/learning");
-  await expect(page.getByLabel("主导航")).toBeVisible();
+  await expect(page.getByLabel("主导航", { exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "移动端主导航" })).toBeHidden();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByLabel("主导航")).toBeHidden();
+  await expect(page.getByLabel("主导航", { exact: true })).toBeHidden();
   await expect(page.getByRole("navigation", { name: "移动端主导航" })).toBeVisible();
 });
 
