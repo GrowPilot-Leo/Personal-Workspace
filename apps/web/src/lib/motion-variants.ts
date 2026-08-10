@@ -1,30 +1,29 @@
 /**
- * Motion variants for the workbench UI.
- * Short travel, low bounce and quick settling create a quiet native-app feel.
+ * Purposeful workbench motion: short travel, strong damping and no decorative hover lift.
  */
 export const pageEnter = {
-  initial: { opacity: 0, y: 6 },
+  initial: { opacity: 0, y: 4 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -3 },
-  transition: { duration: 0.26, ease: [0.22, 1, 0.36, 1] as const },
+  exit: { opacity: 0, y: -2 },
+  transition: { duration: 0.2, ease: [0.2, 0.8, 0.2, 1] as const },
 };
 
 export const cardHover = {
-  whileHover: { y: -2, scale: 1.005 },
-  whileTap: { scale: 0.99 },
-  transition: { type: "spring" as const, stiffness: 420, damping: 32, mass: 0.7 },
+  whileHover: { y: 0, scale: 1 },
+  whileTap: { scale: 0.995 },
+  transition: { duration: 0.14, ease: "easeOut" as const },
 };
 
 export const dialogOpen = {
-  initial: { opacity: 0, scale: 0.97, y: 6 },
+  initial: { opacity: 0, scale: 0.985, y: 3 },
   animate: { opacity: 1, scale: 1, y: 0 },
-  exit: { opacity: 0, scale: 0.98, y: 4 },
-  transition: { type: "spring" as const, stiffness: 430, damping: 34, mass: 0.72 },
+  exit: { opacity: 0, scale: 0.99, y: 2 },
+  transition: { type: "spring" as const, stiffness: 480, damping: 40, mass: 0.72 },
 };
 
 export const sheetOpen = {
-  initial: { opacity: 0, x: 34 },
+  initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 28 },
-  transition: { type: "spring" as const, stiffness: 430, damping: 36, mass: 0.78 },
+  exit: { opacity: 0, x: 16 },
+  transition: { type: "spring" as const, stiffness: 480, damping: 42, mass: 0.76 },
 };
