@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, PanelLeft, Search } from "lucide-react";
+import { Menu, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
@@ -10,15 +10,10 @@ type TopBarProps = {
   onOpenDrawer: () => void;
 };
 
-/**
- * Top bar: sidebar toggle (desktop collapse / mobile drawer), search
- * placeholder, theme switcher. Glass effect applies to the bar itself
- * only (bg-background/90 + blur), never to the content beneath. Colors
- * come from semantic tokens only.
- */
+/** Quiet application chrome. Non-functional search stays absent until it has a real workflow. */
 export function TopBar({ collapsed, onToggleSidebar, onOpenDrawer }: TopBarProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-md">
       <Button
         variant="ghost"
         size="icon"
@@ -38,25 +33,14 @@ export function TopBar({ collapsed, onToggleSidebar, onOpenDrawer }: TopBarProps
         <Menu size={18} />
       </Button>
 
-      <div className="relative max-w-md flex-1">
-        <Search
-          size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <input
-          type="search"
-          placeholder="搜索即将开放…"
-          aria-label="全局搜索（即将开放）"
-          disabled
-          className="h-8 w-full cursor-not-allowed rounded-lg border border-border bg-muted pl-8 pr-3 text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
-        />
-        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-          即将开放
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="truncate text-xs font-semibold tracking-wide text-foreground">
+          PERSONAL WORKSPACE
         </span>
+        <span className="hidden text-xs text-muted-foreground sm:inline">· 清晰地完成今天</span>
       </div>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex items-center">
         <ThemeSwitcher />
       </div>
     </header>
