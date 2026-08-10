@@ -119,7 +119,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
                 <Sparkles size={15} />
               </span>
-              <span className="text-sm font-semibold">GrowPilot</span>
+              <span className="text-sm font-semibold">更多模块</span>
               <button
                 ref={closeButtonRef}
                 type="button"
@@ -134,9 +134,9 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               {moduleRegistry
                 .filter((module) => drawerKeys.includes(module.key))
                 .map((module) => {
-                const Icon = icons[module.key];
-                const active = isActive(module.href, module.key);
-                return (
+                  const Icon = icons[module.key];
+                  const active = isActive(module.href, module.key);
+                  return (
                   <Link
                     key={module.key}
                     href={module.href}
@@ -151,7 +151,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                     <Icon size={17} className="shrink-0" aria-hidden="true" />
                     {module.label}
                   </Link>
-                );
+                  );
                 })}
             </nav>
             <footer className="border-t border-border p-3">
