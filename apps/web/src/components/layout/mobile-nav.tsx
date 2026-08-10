@@ -6,19 +6,17 @@ import {
   BookOpen,
   Database,
   RotateCcw,
-  Settings,
   Sun,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Five high-frequency daily-loop destinations. Lower-readiness modules stay in the drawer. */
+/** High-frequency daily loop only. Secondary modules and settings stay in the drawer. */
 const tabs: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/today", label: "今日", icon: Sun },
   { href: "/learning", label: "学习", icon: BookOpen },
   { href: "/review", label: "复盘", icon: RotateCcw },
   { href: "/knowledge", label: "知识", icon: Database },
-  { href: "/settings", label: "设置", icon: Settings },
 ];
 
 export function MobileNav() {
@@ -29,7 +27,7 @@ export function MobileNav() {
       aria-label="移动端主导航"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_20px_rgba(25,27,24,0.05)] backdrop-blur-xl md:hidden"
     >
-      <div className="grid grid-cols-5">
+      <div className="grid grid-cols-4">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active =
