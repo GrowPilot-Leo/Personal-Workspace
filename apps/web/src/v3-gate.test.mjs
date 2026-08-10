@@ -141,11 +141,16 @@ test("V3-008: MotionConfig and CSS both honor motion preferences", () => {
 });
 
 
-test("V3 summer day theme keeps truthful labels and semantic contrast tokens", () => {
-  assert.ok(themeSwitcher.includes('label: "夏日"'));
-  assert.ok(themeTokens.includes("--color-action-primary: #007a96"));
-  assert.ok(themeTokens.includes("--card-bg: #fffdf7"));
+test("V3 calm day theme keeps truthful labels and semantic contrast tokens", () => {
+  assert.ok(themeSwitcher.includes('label: "日间"'));
+  assert.ok(themeTokens.includes("--color-action-primary: #2f6feb"));
+  assert.ok(themeTokens.includes("--card-bg: #ffffff"));
   assert.ok(!themeTokens.includes("--color-text-primary: #ffffff"));
+  assert.ok(appShell.includes("calm-shell"));
+  assert.equal(todayView.includes("🐤"), false, "literal theme decoration must be removed");
+  assert.equal(dashboard.includes("🐤"), false, "dashboard must stay visually restrained");
+  assert.ok(todayView.includes('aria-label="今日时间线"'));
+  assert.ok(todayView.includes("今日节奏"));
 });
 
 test("Review and Settings replace placeholder pages with real repository actions", () => {
