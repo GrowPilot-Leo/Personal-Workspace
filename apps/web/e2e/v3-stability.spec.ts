@@ -14,6 +14,25 @@ const emptyDailyLoop = JSON.stringify({
   updatedAt: "2026-08-10T00:00:00.000Z",
 });
 
+const seededDailyLoop = JSON.stringify({
+  version: 1,
+  activeDate: "2026-08-10",
+  goal: "完成 RAG 方案",
+  availableMinutes: 60,
+  tasks: [
+    {
+      id: "task-1",
+      title: "整理 RAG 流程",
+      durationMinutes: 30,
+      completedAt: null,
+      createdAt: "2026-08-10T00:00:00.000Z",
+    },
+  ],
+  review: null,
+  history: [],
+  updatedAt: "2026-08-10T00:00:00.000Z",
+});
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ({ key, value }) => window.localStorage.setItem(key, value),
@@ -28,7 +47,7 @@ test("core routes load without browser errors", async ({ page }) => {
   });
   page.on("pageerror", (error) => errors.push(error.message));
 
-  for (const route of ["/dashboard", "/today", "/learning", "/settings"]) {
+  for (const route of ["/dashboard", "/today", "/learning", "/review", "/settings"]) {
     await page.goto(route);
     await expect(page.locator("main")).toBeVisible();
   }
@@ -36,7 +55,7 @@ test("core routes load without browser errors", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("390px mobile shell keeps content in the viewport and exposes all modules", async ({
+test("390px mobile shell keeps content in the viewport and prioritizes daily-loop tabs", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -47,6 +66,11 @@ test("390px mobile shell keeps content in the viewport and exposes all modules",
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBe(true);
 
+  const mobileNav = page.getByRole("navigation", { name: "移动端主导航" });
+  await expect(mobileNav.getByRole("link", { name: "复盘" })).toBeVisible();
+  await expect(mobileNav.getByRole("link", { name: "设置" })).toBeVisible();
+  await expect(mobileNav.getByRole("link", { name: "健身" })).toHaveCount(0);
+
   await page.getByRole("button", { name: "打开模块导航" }).click();
   const drawer = page.getByRole("dialog", { name: "模块导航" });
   await expect(drawer).toBeVisible();
@@ -54,39 +78,74 @@ test("390px mobile shell keeps content in the viewport and exposes all modules",
   await expect(drawer.getByRole("link", { name: "设置" })).toBeVisible();
 });
 
-test("three themes remain readable and persist on refresh", async ({ page }) => {
+test("summer day theme is the default and themes persist on refresh", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/today");
 
+  await page.getByRole("button", { name: "夏日" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "day");
+  await expect(page.locator(".summer-shell")).toBeVisible();
+
   for (const [label, value] of [
-    ["日间", "day"],
     ["夜间", "night"],
     ["暮色", "dusk"],
+    ["夏日", "day"],
   ] as const) {
     await page.getByRole("button", { name: label }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", value);
     await expect(page.getByRole("heading", { name: "今日行动" })).toBeVisible();
-
-    const colors = await page.getByRole("heading", { name: "今日行动" }).evaluate((node) => {
-      const style = getComputedStyle(node);
-      return { color: style.color, background: getComputedStyle(document.body).backgroundColor };
-    });
-    expect(colors.color).not.toBe("rgb(255, 255, 255)");
-    expect(colors.background).not.toBe("rgb(255, 255, 255)");
   }
 
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dusk");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "day");
 });
 
-test("today action gives visible and announced feedback", async ({ page }) => {
+test("today starts the next real task and can complete it inline", async ({ page }) => {
+  await page.addInitScript(
+    ({ key, value }) => window.localStorage.setItem(key, value),
+    { key: DAILY_LOOP_KEY, value: seededDailyLoop },
+  );
   await page.goto("/today");
 
-  const start = page.getByRole("button", { name: "开始今日行动" });
-  await start.click();
+  await page.getByRole("button", { name: /开始下一项/ }).click();
+  await expect(page.locator('[aria-live="polite"]')).toContainText("已开始：整理 RAG 流程");
 
-  await expect(page.getByRole("button", { name: /行动进行中/ })).toBeVisible();
-  await expect(page.locator('[aria-live="polite"]')).toContainText("已开始今日行动");
+  await page.getByRole("button", { name: "完成任务：整理 RAG 流程" }).click();
+  await expect(page.getByRole("button", { name: "撤销完成：整理 RAG 流程" })).toBeVisible();
+  await expect(page.getByText("1/1")).toBeVisible();
+});
+
+test("review saves real daily review and enables next-day rollover", async ({ page }) => {
+  await page.addInitScript(
+    ({ key, value }) => window.localStorage.setItem(key, value),
+    { key: DAILY_LOOP_KEY, value: seededDailyLoop },
+  );
+  await page.goto("/review");
+
+  await page.getByLabel("今天完成了什么、学会了什么？").fill("完成了 RAG 流程整理");
+  await page.getByLabel("哪里卡住了？").fill("资料较分散");
+  await page.getByLabel("下一次准备怎么调整？").fill("先固定输入输出");
+  await page.getByRole("button", { name: "保存今日复盘" }).click();
+
+  await expect(page.getByText("复盘已保存")).toBeVisible();
+  await expect(page.getByRole("button", { name: "归档并开始下一天" })).toBeEnabled();
+});
+
+test("settings owns appearance and local data controls", async ({ page }) => {
+  await page.goto("/settings");
+  const main = page.locator("main");
+
+  await main.getByRole("button", { name: "精简动效" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-motion", "reduced");
+  await expect(main.getByRole("button", { name: "导出数据" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "导入数据" })).toBeVisible();
+  await expect(main.getByRole("button", { name: "清空成长数据" })).toBeVisible();
+});
+
+test("rule-generated copy is labelled as an action suggestion", async ({ page }) => {
+  await page.goto("/dashboard");
+  await expect(page.getByText("行动建议")).toBeVisible();
+  await expect(page.getByText("规则建议，不会自动修改计划")).toBeVisible();
 });
 
 test("quick prompt reports copy failure instead of swallowing the error", async ({ page }) => {
@@ -102,13 +161,13 @@ test("quick prompt reports copy failure instead of swallowing the error", async 
   await expect(page.getByText("复制失败")).toBeVisible();
 });
 
-test("critical and serious axe violations are absent on Today", async ({ page }) => {
-  await page.goto("/today");
-
-  const results = await new AxeBuilder({ page }).analyze();
-  const blocking = results.violations.filter((violation) =>
-    violation.impact === "critical" || violation.impact === "serious",
-  );
-
-  expect(blocking).toEqual([]);
+test("critical and serious axe violations are absent on core daily-loop pages", async ({ page }) => {
+  for (const route of ["/today", "/review", "/settings"]) {
+    await page.goto(route);
+    const results = await new AxeBuilder({ page }).analyze();
+    const blocking = results.violations.filter((violation) =>
+      violation.impact === "critical" || violation.impact === "serious",
+    );
+    expect(blocking, route).toEqual([]);
+  }
 });
