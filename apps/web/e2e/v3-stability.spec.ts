@@ -67,15 +67,32 @@ test("390px mobile shell keeps content in the viewport and prioritizes daily-loo
   ).toBe(true);
 
   const mobileNav = page.getByRole("navigation", { name: "移动端主导航" });
-  await expect(mobileNav.getByRole("link", { name: "复盘" })).toBeVisible();
-  await expect(mobileNav.getByRole("link", { name: "设置" })).toBeVisible();
-  await expect(mobileNav.getByRole("link", { name: "健身" })).toHaveCount(0);
+  for (const label of ["今日", "学习", "复盘", "知识"]) {
+    await expect(mobileNav.getByRole("link", { name: label, exact: true })).toBeVisible();
+  }
+  await expect(mobileNav.getByRole("link", { name: "设置", exact: true })).toHaveCount(0);
+  await expect(mobileNav.getByRole("link", { name: "职业", exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "打开模块导航" }).click();
   const drawer = page.getByRole("dialog", { name: "模块导航" });
   await expect(drawer).toBeVisible();
-  await expect(drawer.getByRole("link", { name: "职业成长" })).toBeVisible();
-  await expect(drawer.getByRole("link", { name: "设置" })).toBeVisible();
+  for (const label of ["职业成长", "英语进阶", "健身训练", "徽章", "设置"]) {
+    await expect(drawer.getByRole("link", { name: label, exact: true })).toBeVisible();
+  }
+  for (const label of ["今日", "学习中心", "复盘中心", "知识库"]) {
+    await expect(drawer.getByRole("link", { name: label, exact: true })).toHaveCount(0);
+  }
+});
+
+test("desktop sidebar and mobile bottom navigation are mutually exclusive", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/learning");
+  await expect(page.getByLabel("主导航")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "移动端主导航" })).toBeHidden();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByLabel("主导航")).toBeHidden();
+  await expect(page.getByRole("navigation", { name: "移动端主导航" })).toBeVisible();
 });
 
 test("calm day theme is the default and themes persist on refresh", async ({ page }) => {
