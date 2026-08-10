@@ -506,3 +506,7 @@ The approved framework does not include:
 - social features, payments or course marketplace
 - automatic job applications
 - dynamic wallpaper work before core product acceptance
+
+## 15. Implementation Planning Boundary
+
+This document is the umbrella project framework, not one implementation plan. Each stage receives its own independently reviewable plan and Draft PR. The first implementation plan covers only the integration gate and Stage 3 configurable-learning closure. Stage 4 planning starts only after Stage 3 acceptance evidence exists.
