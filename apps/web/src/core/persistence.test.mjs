@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createEmptyDailyLoopState } from "@/core/daily-loop";
+import { createEmptyDailyLoopState } from "./daily-loop.ts";
 import {
   MIGRATION_LOG_KEY,
   V1_DAILY_LOOP_KEY,
   V2_MIGRATED_KEY,
-} from "@/core/migrations";
+} from "./migrations.ts";
 import { createWorkspaceRepository } from "./persistence.ts";
 
 function memoryStorage(seed = {}) {
