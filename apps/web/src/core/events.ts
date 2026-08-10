@@ -1,12 +1,16 @@
 import type { EntityId, IsoDateTime } from "@/core/identity";
 
+export const stage3DomainEventTypes = [
+  "learning.space.created",
+  "learning.space.updated",
+  "learning.space.paused",
+  "learning.task.scheduled",
+] as const;
+
 export type DomainEventType =
   | "learning.task.completed"
   | "learning.space.archived"
-  | "learning.space.created"
-  | "learning.space.updated"
-  | "learning.space.paused"
-  | "learning.task.scheduled"
+  | (typeof stage3DomainEventTypes)[number]
   | "career.skill-gap.changed"
   | "fitness.session.completed"
   | "knowledge.resource.updated"
