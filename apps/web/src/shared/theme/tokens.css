@@ -1,61 +1,56 @@
-/* Foundation + semantic tokens — Summer Day theme is the default. */
+/* Foundation + semantic tokens — calm Day theme is the default. */
 :root {
-  /* semantic tokens (business modules use these only) */
-  --color-bg-canvas: #f2fbfd;
-  --color-bg-surface: #fffdf7;
-  --color-text-primary: #073b4c;
-  --color-text-muted: #52717b;
-  --color-action-primary: #007a96;
-  --color-ai-accent: #a33d27;
-  --color-success: #147d65;
-  --color-warning: #a85d00;
-  --color-danger: #bd3d45;
+  --color-bg-canvas: #f6f6f3;
+  --color-bg-surface: #ffffff;
+  --color-text-primary: #252523;
+  --color-text-muted: #6f716d;
+  --color-action-primary: #2f6feb;
+  --color-ai-accent: #6555c7;
+  --color-success: #2f7d52;
+  --color-warning: #925716;
+  --color-danger: #b54848;
 
-  /* component tokens (shell UI only) */
-  --sidebar-bg: rgba(242, 251, 253, 0.9);
-  --nav-active-bg: #d9f5fa;
-  --nav-active-text: #07566a;
-  --nav-hover-bg: #e8f8fa;
-  --card-bg: #fffdf7;
-  --card-border: #bedfe5;
-  --brand-bg: #007a96;
+  --sidebar-bg: rgba(246, 246, 243, 0.96);
+  --nav-active-bg: #eaf0ff;
+  --nav-active-text: #2859b8;
+  --nav-hover-bg: #efefec;
+  --card-bg: #ffffff;
+  --card-border: #dedfda;
+  --brand-bg: #2f6feb;
   --brand-text: #ffffff;
 
-  /* motion: short, quiet and spring-like */
-  --motion-transition: 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-transition: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  /* legacy V1 variables mapped onto the summer palette */
-  --ink: #073b4c;
-  --muted: #52717b;
-  --line: #bedfe5;
-  --surface: #fffdf7;
-  --canvas: #f2fbfd;
-  --brand: #007a96;
-  --brand-soft: #d9f5fa;
-  --deep: #073b4c;
-  --green: #147d65;
-  --blue: #167eaa;
-  --shadow: 0 18px 46px rgba(4, 88, 112, 0.1);
+  --ink: #252523;
+  --muted: #6f716d;
+  --line: #dedfda;
+  --surface: #ffffff;
+  --canvas: #f6f6f3;
+  --brand: #2f6feb;
+  --brand-soft: #eaf0ff;
+  --deep: #252523;
+  --green: #2f7d52;
+  --blue: #2f6feb;
+  --shadow: 0 1px 2px rgba(25, 27, 24, 0.05), 0 8px 24px rgba(25, 27, 24, 0.035);
 
-  /* shadcn/ui semantic tokens (HSL triplets) */
-  --background: 190 58% 97%;
-  --foreground: 194 83% 16%;
-  --card: 48 100% 98%;
-  --card-foreground: 194 83% 16%;
-  --popover: 48 100% 98%;
-  --popover-foreground: 194 83% 16%;
-  --primary: 191 100% 29%;
+  --background: 60 14% 96%;
+  --foreground: 60 3% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 60 3% 14%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 60 3% 14%;
+  --primary: 219 82% 55%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 188 58% 92%;
-  --secondary-foreground: 194 72% 21%;
-  --muted: 188 43% 92%;
-  --muted-foreground: 194 20% 40%;
-  --accent: 48 100% 87%;
-  --accent-foreground: 31 88% 22%;
-  --destructive: 356 51% 49%;
+  --secondary: 60 8% 93%;
+  --secondary-foreground: 60 3% 19%;
+  --muted: 60 8% 93%;
+  --muted-foreground: 80 2% 44%;
+  --accent: 220 60% 95%;
+  --accent-foreground: 219 65% 38%;
+  --destructive: 0 44% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 190 42% 82%;
-  --input: 190 42% 82%;
-  --ring: 191 100% 29%;
-  --radius: 0.875rem;
+  --border: 72 6% 86%;
+  --input: 72 6% 86%;
+  --ring: 219 82% 55%;
+  --radius: 0.625rem;
 }
