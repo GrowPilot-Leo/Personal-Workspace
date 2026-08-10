@@ -23,6 +23,7 @@ const learning = src("modules/learning/index.tsx");
 const persistence = src("core/persistence.ts");
 const pwaRegister = src("components/pwa-register.tsx");
 const serviceWorker = src("../public/sw.js");
+const motionCss = src("shared/theme/motion.css");
 const e2eConfig = readFileSync(join(__dirname, "../../../playwright.config.ts"), "utf8");
 const ciWorkflow = readFileSync(join(__dirname, "../../../.github/workflows/ci.yml"), "utf8");
 
@@ -124,6 +125,13 @@ test("V3-008: service worker only serves HTML fallback to navigations", () => {
   assert.ok(serviceWorker.includes("status: 503"), "uncached offline responses must be explicit");
   assert.ok(pwaRegister.includes("console.warn"), "registration failures must be diagnosable");
   assert.ok(pwaRegister.includes("data-pwa-status"), "registration status must be observable");
+});
+
+test("V3-008: MotionConfig and CSS both honor motion preferences", () => {
+  assert.ok(appShell.includes("MotionConfig"));
+  assert.ok(appShell.includes("reducedMotion={reducedMotion}"));
+  assert.ok(motionCss.includes('html[data-motion="off"] *'));
+  assert.ok(motionCss.includes("scroll-behavior: auto"));
 });
 
 // ---- V3-005: one shell, one dashboard, no legacy module shell ----
