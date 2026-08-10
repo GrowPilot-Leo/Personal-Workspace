@@ -154,6 +154,16 @@ test("V3 calm day theme keeps truthful labels and semantic contrast tokens", () 
   assert.ok(todayView.includes("今日节奏"));
 });
 
+test("V3-009: Learning plans, Today executes, and Review owns reflection", () => {
+  assert.ok(learning.includes("加入今日"));
+  assert.ok(learning.includes('href="/today"'));
+  assert.equal(learning.includes("saveReview"), false);
+  assert.equal(learning.includes("rollDailyLoopForward"), false);
+  assert.equal(learning.includes("保存复盘"), false);
+  assert.ok(review.includes("saveReview"));
+  assert.ok(review.includes("rollDailyLoopForward"));
+});
+
 test("Review and Settings replace placeholder pages with real repository actions", () => {
   assert.ok(review.includes("saveDailyLoop(next)"));
   assert.ok(review.includes("rollDailyLoopForward"));
