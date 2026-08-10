@@ -35,3 +35,9 @@
 - 任务状态能在时间线上直接识别和修改。
 - 390px、桌面端与三主题可读。
 - system/reduced/off 动效偏好继续有效。
+
+## 验收分支
+
+- Branch: `codex/v3-calm-timeline`
+- Draft PR: #6
+- 合并前必须通过核心规则、类型检查、生产构建、浏览器和 axe 检查。
