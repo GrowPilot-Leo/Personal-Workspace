@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: ["agent/**", "v3/**"]
+    branches: ["agent/**", "v3/**", "codex/**"]
 
 permissions:
   contents: read
