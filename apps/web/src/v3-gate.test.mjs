@@ -21,6 +21,10 @@ const quickPrompts = src("components/dashboard/quick-prompts-card.tsx");
 const dashboard = src("components/dashboard/dashboard.tsx");
 const learning = src("modules/learning/index.tsx");
 const persistence = src("core/persistence.ts");
+const pwaRegister = src("components/pwa-register.tsx");
+const serviceWorker = src("../public/sw.js");
+const e2eConfig = readFileSync(join(__dirname, "../../../playwright.config.ts"), "utf8");
+const ciWorkflow = readFileSync(join(__dirname, "../../../.github/workflows/ci.yml"), "utf8");
 
 // ---- V3-001: theme tokens — no hard-coded colors in official content ----
 test("V3-001: no bg-white / text-zinc / border-black in official UI", () => {
@@ -91,7 +95,10 @@ test("V3-006: pages use the typed persistence boundary", () => {
       false,
       "page must not access localStorage directly",
     );
-    assert.ok(page.includes("createWorkspaceRepository"), "page must use repository");
+    assert.ok(
+      page.includes("createBrowserWorkspaceRepository"),
+      "page must use browser repository factory",
+    );
   }
   assert.ok(persistence.includes("migrateDailyLoopV1ToV2"));
   assert.ok(persistence.includes("saveDailyLoop"));
@@ -100,6 +107,23 @@ test("V3-006: pages use the typed persistence boundary", () => {
 test("V3-006: migration recovery is handled at the repository boundary", () => {
   assert.ok(persistence.includes("catch"));
   assert.ok(persistence.includes("loadV1DailyLoop"));
+});
+
+test("V3-007: browser regression suite is wired into CI", () => {
+  assert.ok(e2eConfig.includes("webServer"));
+  assert.ok(e2eConfig.includes("testDir: \"./apps/web/e2e\""));
+  assert.ok(ciWorkflow.includes("npm run test:e2e"));
+  assert.ok(ciWorkflow.includes("v3/**"));
+});
+
+test("V3-008: service worker only serves HTML fallback to navigations", () => {
+  const navigateGuard = serviceWorker.indexOf('request.mode === "navigate"');
+  const dashboardFallback = serviceWorker.indexOf('caches.match("/dashboard")');
+  assert.ok(navigateGuard >= 0, "navigation requests need an explicit branch");
+  assert.ok(dashboardFallback > navigateGuard, "HTML fallback must stay in navigation branch");
+  assert.ok(serviceWorker.includes("status: 503"), "uncached offline responses must be explicit");
+  assert.ok(pwaRegister.includes("console.warn"), "registration failures must be diagnosable");
+  assert.ok(pwaRegister.includes("data-pwa-status"), "registration status must be observable");
 });
 
 // ---- V3-005: one shell, one dashboard, no legacy module shell ----
