@@ -130,7 +130,7 @@ test("V3-008: service worker only serves HTML fallback to navigations", () => {
   assert.ok(dashboardFallback > navigateGuard, "HTML fallback must stay in navigation branch");
   assert.ok(serviceWorker.includes("status: 503"), "uncached offline responses must be explicit");
   assert.ok(pwaRegister.includes("console.warn"), "registration failures must be diagnosable");
-  assert.ok(pwaRegister.includes("data-pwa-status"), "registration status must be observable");
+  assert.ok(pwaRegister.includes("dataset.pwaStatus"), "registration status must be observable");
 });
 
 test("V3-008: MotionConfig and CSS both honor motion preferences", () => {
