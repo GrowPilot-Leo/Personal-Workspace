@@ -59,14 +59,14 @@ test("V3-001: content animation never gates visibility", () => {
   assert.ok(appShell.includes("initial={false}"), "motion outlet must be visible by default");
 });
 
-// ---- V3-002: mobile shell — desktop sidebar hidden, bottom nav + drawer ----
-test("V3-002: desktop sidebar hidden on mobile, all nine entries reachable", () => {
+// ---- V3-002: mobile shell — primary loop and secondary modules stay independent ----
+test("V3-002: sidebar and bottom navigation are mutually exclusive and non-duplicative", () => {
   assert.ok(appShell.includes('className="hidden md:block"'), "sidebar must be md-only");
   assert.ok(mobileNav.includes("md:hidden"), "bottom nav must be mobile-only");
   assert.ok(mobileDrawer.includes("md:hidden"), "drawer must be mobile-only");
   const tabHrefs = [...mobileNav.matchAll(/href: "(\/[a-z-]+)"/g)].map((m) => m[1]);
-  assert.equal(tabHrefs.length, 5, "exactly five primary tabs");
-  assert.ok(mobileDrawer.includes("moduleRegistry"), "drawer must render the module registry");
+  assert.deepEqual(tabHrefs, ["/today", "/learning", "/review", "/knowledge"]);
+  assert.ok(mobileDrawer.includes("drawerKeys.includes(module.key)"));
   assert.ok(mobileDrawer.includes("href={module.href}"), "drawer links navigate to modules");
 });
 
