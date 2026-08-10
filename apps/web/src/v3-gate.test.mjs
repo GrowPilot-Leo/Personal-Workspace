@@ -20,6 +20,10 @@ const dashboardCard = src("components/dashboard/dashboard-card.tsx");
 const quickPrompts = src("components/dashboard/quick-prompts-card.tsx");
 const dashboard = src("components/dashboard/dashboard.tsx");
 const learning = src("modules/learning/index.tsx");
+const review = src("modules/review/index.tsx");
+const settings = src("modules/settings/index.tsx");
+const themeSwitcher = src("components/theme-switcher.tsx");
+const themeTokens = src("shared/theme/tokens.css");
 const persistence = src("core/persistence.ts");
 const pwaRegister = src("components/pwa-register.tsx");
 const serviceWorker = src("../public/sw.js");
@@ -71,9 +75,11 @@ test("V3-002: mobile nav handles safe-area inset", () => {
 });
 
 // ---- V3-003: interaction feedback — no enabled no-op buttons ----
-test("V3-003: start-today button produces a defined action", () => {
-  assert.ok(todayView.includes("onClick={startToday}"), "button must be wired");
-  assert.ok(todayView.includes("scrollIntoView"), "action must do something visible");
+test("V3-003: Today starts and completes persisted tasks", () => {
+  assert.ok(todayView.includes("onClick={startNextTask}"), "next-task action must be wired");
+  assert.ok(todayView.includes("toggleTask"), "Today must support inline task completion");
+  assert.ok(todayView.includes("saveDailyLoop(next)"), "task changes must persist");
+  assert.ok(todayView.includes("scrollIntoView"), "start action must locate the active task");
   assert.ok(todayView.includes('aria-live="polite"'), "feedback must be announced");
 });
 
@@ -90,7 +96,7 @@ test("V3-003: search is explicitly disabled until implemented", () => {
 });
 
 test("V3-006: pages use the typed persistence boundary", () => {
-  for (const page of [dashboard, todayView, learning]) {
+  for (const page of [dashboard, todayView, learning, review, settings]) {
     assert.equal(
       page.includes("window.localStorage"),
       false,
@@ -132,6 +138,22 @@ test("V3-008: MotionConfig and CSS both honor motion preferences", () => {
   assert.ok(appShell.includes("reducedMotion={reducedMotion}"));
   assert.ok(motionCss.includes('html[data-motion="off"] *'));
   assert.ok(motionCss.includes("scroll-behavior: auto"));
+});
+
+
+test("V3 summer day theme keeps truthful labels and semantic contrast tokens", () => {
+  assert.ok(themeSwitcher.includes('label: "夏日"'));
+  assert.ok(themeTokens.includes("--color-action-primary: #007a96"));
+  assert.ok(themeTokens.includes("--card-bg: #fffdf7"));
+  assert.ok(!themeTokens.includes("--color-text-primary: #ffffff"));
+});
+
+test("Review and Settings replace placeholder pages with real repository actions", () => {
+  assert.ok(review.includes("saveDailyLoop(next)"));
+  assert.ok(review.includes("rollDailyLoopForward"));
+  assert.ok(settings.includes("导出数据"));
+  assert.ok(settings.includes("导入数据"));
+  assert.ok(settings.includes("清空成长数据"));
 });
 
 // ---- V3-005: one shell, one dashboard, no legacy module shell ----
