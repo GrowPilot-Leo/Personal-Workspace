@@ -1,13 +1,13 @@
-import type { DailyLoopState } from "@/core/daily-loop";
+import type { DailyLoopState } from "./daily-loop.ts";
 import {
   loadDailyLoop as loadV1DailyLoop,
   saveDailyLoop as saveV1DailyLoop,
-} from "@/core/daily-loop";
+} from "./daily-loop.ts";
 import {
   migrateDailyLoopV1ToV2,
   type MigrationRecord,
   type StorageLike,
-} from "@/core/migrations";
+} from "./migrations.ts";
 
 /**
  * Typed persistence boundary for the current local workspace.
