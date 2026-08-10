@@ -21,7 +21,7 @@ import {
   rollDailyLoopForward,
   type DailyLoopState,
 } from "@/core/daily-loop";
-import { createWorkspaceRepository } from "@/core/persistence";
+import { createBrowserWorkspaceRepository } from "@/core/persistence";
 
 type ReviewDraft = {
   wins: string;
