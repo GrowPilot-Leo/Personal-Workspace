@@ -50,9 +50,9 @@ test("V3-001: single global stylesheet entry", () => {
   assert.ok(layout.includes('import "@/styles/globals.css"'), "single entry must remain");
 });
 
-test("V3-001: shell main uses semantic surface, not white", () => {
-  assert.ok(appShell.includes("bg-card"), "main must use bg-card token");
-  assert.ok(!appShell.includes("bg-white"), "no white background on main");
+test("V3-001: shell main uses the calm semantic canvas, not hard-coded white", () => {
+  assert.ok(appShell.includes("calm-main"), "main must use the calm canvas class");
+  assert.ok(!appShell.includes("bg-white"), "no hard-coded white background on main");
 });
 
 test("V3-001: content animation never gates visibility", () => {
