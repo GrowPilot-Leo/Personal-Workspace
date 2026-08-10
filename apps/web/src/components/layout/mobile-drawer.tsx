@@ -41,7 +41,7 @@ type MobileDrawerProps = {
 /** Mobile module drawer with focus entry, trapping and restoration. */
 export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const pathname = usePathname();
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -91,13 +91,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   return (
     <AnimatePresence>
       {open && (
-        <div
-          ref={dialogRef}
-          className="fixed inset-0 z-50 md:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="模块导航"
-        >
+        <div className="fixed inset-0 z-50 md:hidden">
           <motion.button
             type="button"
             aria-label="关闭导航遮罩"
@@ -109,6 +103,10 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
             className="absolute inset-0 cursor-default bg-black/40"
           />
           <motion.aside
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="模块导航"
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
