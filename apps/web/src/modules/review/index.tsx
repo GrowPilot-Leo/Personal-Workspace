@@ -135,17 +135,17 @@ export function ReviewModule() {
       </header>
 
       <ul className="grid list-none gap-4 sm:grid-cols-3" aria-label="最近七日摘要">
-        <li className="summer-glass-card rounded-2xl p-5">
+        <li className="calm-surface rounded-2xl p-5">
           <Clock3 size={16} className="text-primary" aria-hidden="true" />
           <strong className="mt-3 block text-2xl">{summary.completed}/{summary.planned}</strong>
           <span className="text-xs text-muted-foreground">任务完成</span>
         </li>
-        <li className="summer-glass-card rounded-2xl p-5">
+        <li className="calm-surface rounded-2xl p-5">
           <CalendarCheck size={16} className="text-primary" aria-hidden="true" />
           <strong className="mt-3 block text-2xl">{summary.reviewed}/{summary.days}</strong>
           <span className="text-xs text-muted-foreground">有记录的天数</span>
         </li>
-        <li className="summer-glass-card rounded-2xl p-5">
+        <li className="calm-surface rounded-2xl p-5">
           <CheckCircle2 size={16} className="text-primary" aria-hidden="true" />
           <strong className="mt-3 block text-2xl">{completedTaskCount(state)}/{state.tasks.length}</strong>
           <span className="text-xs text-muted-foreground">今日任务完成</span>
@@ -227,7 +227,7 @@ export function ReviewModule() {
         </button>
       </article>
 
-      <article className="summer-glass-card rounded-3xl p-5 sm:p-6">
+      <article className="calm-surface rounded-3xl p-5 sm:p-6">
         <div className="flex items-center gap-2">
           <RotateCcw size={16} className="text-primary" aria-hidden="true" />
           <h2 className="text-base font-semibold">最近复盘</h2>
