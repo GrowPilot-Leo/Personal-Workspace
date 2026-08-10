@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createEmptyDailyLoopState, type DailyLoopState } from "@/core/daily-loop";
-import { createWorkspaceRepository } from "@/core/persistence";
+import { createBrowserWorkspaceRepository } from "@/core/persistence";
 import { buildDashboardData } from "@/components/dashboard/dashboard-data";
 import { BentoGrid, BentoCell } from "@/components/dashboard/bento-grid";
 import { TodayFocusCard } from "@/components/dashboard/today-focus-card";
