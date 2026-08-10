@@ -84,16 +84,19 @@ function isValidV1DailyLoop(value: unknown): value is {
   );
 }
 
-function normalizeV1Task(value: unknown, fallbackId: string): Task | null {
+function normalizeV1Task(value: unknown, fallbackId: string, scheduledDate: string): Task | null {
   if (typeof value !== "object" || value === null) return null;
   const record = value as Record<string, unknown>;
   if (typeof record.title !== "string" || !record.title.trim()) return null;
   return {
     id: typeof record.id === "string" ? record.id : fallbackId,
+    ownerModuleId: "learning",
+    ownerEntityId: "learning-space-v1-daily-loop",
     title: record.title,
     description: "",
     durationMinutes:
       typeof record.durationMinutes === "number" ? record.durationMinutes : 25,
+    scheduledDate,
     status: typeof record.completedAt === "string" ? ("done" as const) : ("planned" as const),
     dueAt: null,
     completedAt: typeof record.completedAt === "string" ? record.completedAt : null,
@@ -194,7 +197,9 @@ export function migrateDailyLoopV1ToV2(
   };
 
   const tasks: Task[] = parsedV1.tasks
-    .map((t, index) => normalizeV1Task(t, `v1-task-${index}-${parsedV1.activeDate}`))
+    .map((t, index) =>
+      normalizeV1Task(t, `v1-task-${index}-${parsedV1.activeDate}`, parsedV1.activeDate),
+    )
     .filter((t): t is Task => t !== null);
 
   const reviews: Review[] =
@@ -208,6 +213,7 @@ export function migrateDailyLoopV1ToV2(
           {
             id: crypto.randomUUID(),
             ownerModuleId: "daily-loop",
+            ownerEntityId: "learning-space-v1-daily-loop",
             horizon: "daily",
             periodKey: parsedV1.activeDate,
             wins: String((parsedV1.review as Record<string, unknown>).wins ?? ""),

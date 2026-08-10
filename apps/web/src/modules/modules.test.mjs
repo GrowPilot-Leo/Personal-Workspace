@@ -131,7 +131,7 @@ test("review: daily review is due when no review exists for the period", () => {
   assert.equal(isReviewDue([], "2026-08-06"), true);
   assert.equal(
     isReviewDue(
-      [{ id: "r1", ownerModuleId: "learning", horizon: "daily", periodKey: "2026-08-06", wins: "ok", blockers: "", adjustment: "" }],
+      [{ id: "r1", ownerModuleId: "learning", ownerEntityId: "learning-space-1", horizon: "daily", periodKey: "2026-08-06", wins: "ok", blockers: "", adjustment: "" }],
       "2026-08-06",
     ),
     false,

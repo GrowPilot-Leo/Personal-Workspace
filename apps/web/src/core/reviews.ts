@@ -5,6 +5,7 @@ export type ReviewHorizon = "daily" | "weekly" | "monthly";
 export type Review = {
   id: EntityId;
   ownerModuleId: string;
+  ownerEntityId: EntityId | null;
   horizon: ReviewHorizon;
   periodKey: string;
   wins: string;
@@ -17,6 +18,7 @@ export type Review = {
 export function createReview(input: {
   id?: EntityId;
   ownerModuleId: string;
+  ownerEntityId: EntityId | null;
   horizon: ReviewHorizon;
   periodKey: string;
   wins?: string;
@@ -28,6 +30,7 @@ export function createReview(input: {
   return {
     id: input.id ?? crypto.randomUUID(),
     ownerModuleId: input.ownerModuleId,
+    ownerEntityId: input.ownerEntityId,
     horizon: input.horizon,
     periodKey: input.periodKey,
     wins: input.wins ?? "",

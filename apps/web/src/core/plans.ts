@@ -13,6 +13,7 @@ export type PlanVersion<T> = {
 export type Plan<T = unknown> = {
   id: EntityId;
   ownerModuleId: string;
+  ownerEntityId: EntityId;
   horizon: PlanHorizon;
   versions: PlanVersion<T>[];
   activeVersion: number;
@@ -52,6 +53,7 @@ export function createPlan<T>(
   input: {
     id?: EntityId;
     ownerModuleId: string;
+    ownerEntityId: EntityId;
     horizon: PlanHorizon;
     data: T;
     reason?: string;
@@ -68,6 +70,7 @@ export function createPlan<T>(
   return {
     id: input.id ?? crypto.randomUUID(),
     ownerModuleId: input.ownerModuleId,
+    ownerEntityId: input.ownerEntityId,
     horizon: input.horizon,
     versions: [initialVersion],
     activeVersion: 1,
@@ -79,6 +82,29 @@ export function activePlanData<T>(plan: Plan<T>): T {
   const version = plan.versions.find((v) => v.version === plan.activeVersion);
   if (!version) throw new Error(`active version ${plan.activeVersion} not found`);
   return version.data;
+}
+
+export function revisePlan<T>(
+  plan: Plan<T>,
+  data: T,
+  reason: string,
+  now: IsoDateTime = new Date().toISOString(),
+): Plan<T> {
+  const nextVersion = plan.activeVersion + 1;
+  return {
+    ...plan,
+    versions: [
+      ...plan.versions,
+      {
+        version: nextVersion,
+        createdAt: now,
+        reason,
+        data,
+      },
+    ],
+    activeVersion: nextVersion,
+    updatedAt: now,
+  };
 }
 
 export function proposeRevision<T>(

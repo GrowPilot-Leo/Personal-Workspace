@@ -16,6 +16,7 @@ import { createFeatureFlagStore } from "./flags.ts";
 test("plan revision flow: proposal stays pending until approved", () => {
   const plan = createPlan({
     ownerModuleId: "learning",
+    ownerEntityId: "learning-space-contract-1",
     horizon: "weekly",
     data: { title: "每周计划", tasks: [] },
   });
@@ -36,6 +37,7 @@ test("plan revision flow: proposal stays pending until approved", () => {
 test("accepted revision creates a new version; rejected leaves the plan untouched", () => {
   const plan = createPlan({
     ownerModuleId: "learning",
+    ownerEntityId: "learning-space-contract-2",
     horizon: "weekly",
     data: { title: "每周计划", tasks: [] },
   });
@@ -53,6 +55,7 @@ test("accepted revision creates a new version; rejected leaves the plan untouche
   // rejected revision on a fresh plan leaves version 1 active
   const plan2 = createPlan({
     ownerModuleId: "learning",
+    ownerEntityId: "learning-space-contract-3",
     horizon: "daily",
     data: { title: "A", tasks: [] },
   });
@@ -70,7 +73,15 @@ test("goals, tasks and reviews create and update with stable identity", () => {
   const goal = createGoal({ title: "掌握 RAG" });
   assert.equal(goal.status, "draft");
 
-  const task = createTask({ title: "阅读论文", durationMinutes: 30 });
+  const task = createTask({
+    id: "task-contract-1",
+    ownerModuleId: "learning",
+    ownerEntityId: "learning-space-contract-4",
+    title: "阅读论文",
+    durationMinutes: 30,
+    scheduledDate: "2026-08-06",
+    now: "2026-08-06T00:00:00Z",
+  });
   assert.equal(task.status, "planned");
   assert.equal(isTaskDone(task), false);
 
@@ -80,6 +91,7 @@ test("goals, tasks and reviews create and update with stable identity", () => {
 
   const review = createReview({
     ownerModuleId: "daily-loop",
+    ownerEntityId: "learning-space-v1-daily-loop",
     horizon: "daily",
     periodKey: "2026-08-06",
     wins: "完成一章",

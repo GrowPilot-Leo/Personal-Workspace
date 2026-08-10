@@ -61,12 +61,16 @@ test("migration maps V1 daily loop into V2 entities and preserves a backup", () 
   // invalid task dropped, valid tasks mapped with correct status
   assert.equal(result.payload.tasks.length, 2);
   const done = result.payload.tasks.find((t) => t.id === "t1");
+  assert.equal(done.ownerModuleId, "learning");
+  assert.equal(done.ownerEntityId, "learning-space-v1-daily-loop");
+  assert.equal(done.scheduledDate, "2026-08-03");
   assert.equal(done.status, "done");
   assert.equal(done.completedAt, "2026-08-03T01:00:00Z");
   const todo = result.payload.tasks.find((t) => t.id === "t2");
   assert.equal(todo.status, "planned");
 
   assert.equal(result.payload.reviews.length, 1);
+  assert.equal(result.payload.reviews[0].ownerEntityId, "learning-space-v1-daily-loop");
   assert.equal(result.payload.reviews[0].wins, "读完第一章");
 
   // raw backup preserved, migration log recorded, migrated snapshot written
