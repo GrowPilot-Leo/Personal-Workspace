@@ -200,6 +200,7 @@ git commit -m "feat(core): add owned scheduled task contracts"
 
 **Files:**
 
+- Create: `apps/web/src/core/learning.ts`
 - Modify: `apps/web/src/modules/learning/public.ts`
 - Create: `apps/web/src/modules/learning/public.test.mjs`
 - Modify: `package.json`
@@ -230,7 +231,9 @@ node --experimental-strip-types --test apps/web/src/modules/learning/public.test
 
 Expected: FAIL.
 
-### Step 3: Replace summary-only types with the Stage 3 public API
+### Step 3: Add shared record types and the Stage 3 public API
+
+Define the persistence-neutral `LearningSpace` and `LearningPlanData` records in `core/learning.ts`. This keeps the dependency direction `module → core`; `core/workspace-state.ts` must not import a business module. Re-export those types from `modules/learning/public.ts` for consumers.
 
 Keep `summarizeTasksForToday`, but make it filter by matching owner and expose the source:
 
@@ -274,6 +277,7 @@ Implement pure functions:
 - `scheduleLearningTask(space, dailyPlan, input)`
 - `summarizeTasksForToday(space, tasks)`
 - `buildLearningSpaceExport(workspace, spaceId, exportedAt)`
+- `removeLearningSpaceBundle(workspace, spaceId, now)`
 
 Use `createId`, `createTask`, `createPlan`, and `revisePlan`. Do not call storage or browser APIs from this file.
 
@@ -298,7 +302,7 @@ Expected: PASS.
 ### Step 5: Commit
 
 ~~~powershell
-git add package.json apps/web/src/modules/learning/public.ts apps/web/src/modules/learning/public.test.mjs
+git add package.json apps/web/src/core/learning.ts apps/web/src/modules/learning/public.ts apps/web/src/modules/learning/public.test.mjs
 git commit -m "feat(learning): add configurable learning domain"
 ~~~
 
@@ -357,9 +361,8 @@ Implement:
 - `upsertTask(state, task, now)`
 - `appendReview(state, review, now)`
 - `appendDomainEvent(state, event, now)`
-- `removeLearningSpaceBundle(state, spaceId, now)`
 
-`removeLearningSpaceBundle` removes only the selected space and records owned by that space. It must not delete unrelated spaces, tasks, reviews, or events.
+Import `LearningSpace` and `LearningPlanData` from `core/learning.ts`. The core workspace state must not import `modules/learning/*`. Learning-specific export and deletion remain pure functions in the Learning public API; they must not delete unrelated spaces, tasks, reviews, or events.
 
 Stage 4 collections are intentionally absent from this implementation file. Stage 4 adds them through its own tested schema evolution; this PR does not define unused placeholder models.
 
@@ -450,9 +453,8 @@ Test:
 - `saveWorkspace()` persists only normalized V2 data
 - corrupt V2 JSON is preserved under the corrupt-backup key before fallback
 - one invalid collection does not erase valid unrelated collections
-- `exportLearningSpace(spaceId)` contains only that space’s owned records
-- `deleteLearningSpace(spaceId)` removes only that bundle
 - repeated loads do not duplicate records
+- the repository has no learning-specific export or delete method
 - legacy `loadDailyLoop/saveDailyLoop` remain available as a rollback adapter but are not the V2 source of truth
 
 Run:
@@ -469,8 +471,6 @@ Expected: FAIL.
 export type WorkspaceRepository = {
   loadWorkspace(): WorkspaceStateV2;
   saveWorkspace(state: WorkspaceStateV2): void;
-  exportLearningSpace(spaceId: EntityId): LearningSpaceExport | null;
-  deleteLearningSpace(spaceId: EntityId): WorkspaceStateV2;
   lastMigration(): MigrationRecord | null;
   loadDailyLoop(): DailyLoopState;
   saveDailyLoop(state: DailyLoopState): void;
@@ -483,7 +483,7 @@ Rules:
 - legacy methods remain isolated for rollback and old import compatibility.
 - `saveWorkspace` normalizes before writing.
 - repository methods never silently clear the V1 backup.
-- export is a pure JSON-ready object; the UI owns Blob/download behavior.
+- the repository does not own learning lifecycle behavior. The Learning public API builds exports and removes confirmed bundles; the UI owns Blob/download behavior.
 
 ### Step 3: Verify
 
