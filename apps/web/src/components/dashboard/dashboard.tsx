@@ -24,7 +24,7 @@ export function DashboardModule() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setState(createWorkspaceRepository(window.localStorage).loadDailyLoop());
+    setState(createBrowserWorkspaceRepository().loadDailyLoop());
     setHydrated(true);
   }, []);
 
