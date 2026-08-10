@@ -3,16 +3,13 @@
 import { useTheme } from "@/shared/theme/theme-provider";
 import type { Theme } from "@/shared/theme/theme";
 
-const options: { value: Theme; label: string }[] = [
-  { value: "day", label: "日间" },
-  { value: "night", label: "夜间" },
-  { value: "dusk", label: "暮色" },
+const options: { value: Theme; label: string; hint: string }[] = [
+  { value: "day", label: "夏日", hint: "明亮海滩" },
+  { value: "night", label: "夜间", hint: "深海夜色" },
+  { value: "dusk", label: "暮色", hint: "海边日落" },
 ];
 
-/**
- * Segmented control for Day/Night/Dusk. Persists via useTheme().setTheme,
- * which also updates html[data-theme] so CSS tokens re-resolve instantly.
- */
+/** Theme shortcut. Full appearance controls live in Settings. */
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
   return (
@@ -22,7 +19,9 @@ export function ThemeSwitcher() {
           key={option.value}
           type="button"
           className={theme === option.value ? "theme-option active" : "theme-option"}
+          aria-label={option.label}
           aria-pressed={theme === option.value}
+          title={option.hint}
           onClick={() => setTheme(option.value)}
         >
           {option.label}
