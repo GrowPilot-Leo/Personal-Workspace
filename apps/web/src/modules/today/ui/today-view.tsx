@@ -10,7 +10,7 @@ import {
   Target,
 } from "lucide-react";
 import { createEmptyDailyLoopState, type DailyLoopState } from "@/core/daily-loop";
-import { createWorkspaceRepository } from "@/core/persistence";
+import { createBrowserWorkspaceRepository } from "@/core/persistence";
 import { buildTodayViewState } from "./today-actions.ts";
 
 function displayDate(dateKey: string) {
