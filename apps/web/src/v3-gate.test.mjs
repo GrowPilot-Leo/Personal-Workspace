@@ -121,6 +121,7 @@ test("V3-007: browser regression suite is wired into CI", () => {
   assert.ok(e2eConfig.includes("testDir: \"./apps/web/e2e\""));
   assert.ok(ciWorkflow.includes("npm run test:e2e"));
   assert.ok(ciWorkflow.includes("v3/**"));
+  assert.ok(ciWorkflow.includes("codex/**"));
 });
 
 test("V3-008: service worker only serves HTML fallback to navigations", () => {
