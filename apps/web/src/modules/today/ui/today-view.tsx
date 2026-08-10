@@ -9,11 +9,8 @@ import {
   Clock3,
   Target,
 } from "lucide-react";
-import {
-  createEmptyDailyLoopState,
-  loadDailyLoop,
-  type DailyLoopState,
-} from "@/core/daily-loop";
+import { createEmptyDailyLoopState, type DailyLoopState } from "@/core/daily-loop";
+import { createWorkspaceRepository } from "@/core/persistence";
 import { buildTodayViewState } from "./today-actions.ts";
 
 function displayDate(dateKey: string) {
@@ -40,7 +37,7 @@ export function TodayModule() {
   const taskSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setState(loadDailyLoop(window.localStorage));
+    setState(createWorkspaceRepository(window.localStorage).loadDailyLoop());
     setHydrated(true);
   }, []);
 
