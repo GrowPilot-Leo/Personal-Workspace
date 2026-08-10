@@ -39,14 +39,14 @@ export function LearningModule() {
   const [review, setReview] = useState<ReviewDraft>(emptyReview);
 
   useEffect(() => {
-    const stored = createWorkspaceRepository(window.localStorage).loadDailyLoop();
+    const stored = createBrowserWorkspaceRepository().loadDailyLoop();
     setState(stored);
     setReview(stored.review ?? emptyReview);
     setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (hydrated) createWorkspaceRepository(window.localStorage).saveDailyLoop(state);
+    if (hydrated) createBrowserWorkspaceRepository().saveDailyLoop(state);
   }, [hydrated, state]);
 
   const completed = completedTaskCount(state);
