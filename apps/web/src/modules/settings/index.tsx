@@ -217,6 +217,7 @@ export function SettingsModule() {
           <input
             ref={importRef}
             accept="application/json,.json"
+            aria-label="选择 GrowPilot 备份文件"
             className="sr-only"
             onChange={importData}
             type="file"
