@@ -67,26 +67,24 @@ export function TodayModule() {
   };
 
   const toggleTask = (taskId: string) => {
-    setState((current) => {
-      const next: DailyLoopState = {
-        ...current,
-        tasks: current.tasks.map((task) =>
-          task.id === taskId
-            ? { ...task, completedAt: task.completedAt ? null : new Date().toISOString() }
-            : task,
-        ),
-        updatedAt: new Date().toISOString(),
-      };
-      const changed = next.tasks.find((task) => task.id === taskId);
-      createBrowserWorkspaceRepository().saveDailyLoop(next);
-      setAnnouncement(
-        changed?.completedAt
-          ? `已完成：${changed.title}`
-          : `已恢复为待完成：${changed?.title ?? "任务"}`,
-      );
-      if (changed?.completedAt && activeTaskId === taskId) setActiveTaskId(null);
-      return next;
-    });
+    const next: DailyLoopState = {
+      ...state,
+      tasks: state.tasks.map((task) =>
+        task.id === taskId
+          ? { ...task, completedAt: task.completedAt ? null : new Date().toISOString() }
+          : task,
+      ),
+      updatedAt: new Date().toISOString(),
+    };
+    const changed = next.tasks.find((task) => task.id === taskId);
+    createBrowserWorkspaceRepository().saveDailyLoop(next);
+    setState(next);
+    setAnnouncement(
+      changed?.completedAt
+        ? `已完成：${changed.title}`
+        : `已恢复为待完成：${changed?.title ?? "任务"}`,
+    );
+    if (changed?.completedAt && activeTaskId === taskId) setActiveTaskId(null);
   };
 
   if (!hydrated) {
