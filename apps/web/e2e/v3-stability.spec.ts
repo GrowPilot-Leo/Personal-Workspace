@@ -78,18 +78,18 @@ test("390px mobile shell keeps content in the viewport and prioritizes daily-loo
   await expect(drawer.getByRole("link", { name: "设置" })).toBeVisible();
 });
 
-test("summer day theme is the default and themes persist on refresh", async ({ page }) => {
+test("calm day theme is the default and themes persist on refresh", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/today");
 
-  await page.getByRole("button", { name: "夏日" }).click();
+  await page.getByRole("button", { name: "日间" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "day");
-  await expect(page.locator(".summer-shell")).toBeVisible();
+  await expect(page.locator(".calm-shell")).toBeVisible();
 
   for (const [label, value] of [
     ["夜间", "night"],
     ["暮色", "dusk"],
-    ["夏日", "day"],
+    ["日间", "day"],
   ] as const) {
     await page.getByRole("button", { name: label }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", value);
@@ -113,6 +113,8 @@ test("today starts the next real task and can complete it inline", async ({ page
   await page.getByRole("button", { name: "完成任务：整理 RAG 流程" }).click();
   await expect(page.getByRole("button", { name: "撤销完成：整理 RAG 流程" })).toBeVisible();
   await expect(page.getByText("1/1")).toBeVisible();
+  await expect(page.getByRole("list", { name: "今日时间线" })).toBeVisible();
+  await expect(page.getByText("今日节奏")).toBeVisible();
 });
 
 test("review saves real daily review and enables next-day rollover", async ({ page }) => {
