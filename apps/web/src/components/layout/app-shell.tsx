@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <MotionConfig reducedMotion={reducedMotion}>
-      <div className="summer-shell grid-bg radial-fade flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <div className="calm-shell flex h-screen w-full overflow-hidden bg-background text-foreground">
       <div className="hidden md:block">
         <Sidebar collapsed={collapsed} />
       </div>
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onToggleSidebar={() => setCollapsed((v) => !v)}
           onOpenDrawer={() => setDrawerOpen(true)}
         />
-        <main className="summer-main flex-1 overflow-y-auto bg-card/90 pb-20 backdrop-blur-[2px] md:pb-0">
+        <main className="calm-main flex-1 overflow-y-auto pb-20 md:pb-0">
           <motion.div
             key={pathname}
             initial={false}
