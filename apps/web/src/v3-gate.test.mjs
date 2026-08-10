@@ -18,6 +18,9 @@ const mobileDrawer = src("components/layout/mobile-drawer.tsx");
 const todayView = src("modules/today/ui/today-view.tsx");
 const dashboardCard = src("components/dashboard/dashboard-card.tsx");
 const quickPrompts = src("components/dashboard/quick-prompts-card.tsx");
+const dashboard = src("components/dashboard/dashboard.tsx");
+const learning = src("modules/learning/index.tsx");
+const persistence = src("core/persistence.ts");
 
 // ---- V3-001: theme tokens — no hard-coded colors in official content ----
 test("V3-001: no bg-white / text-zinc / border-black in official UI", () => {
@@ -79,6 +82,24 @@ test("V3-003: prompt copy surfaces success and failure", () => {
 test("V3-003: search is explicitly disabled until implemented", () => {
   assert.ok(topbar.includes("disabled"), "search input must be disabled");
   assert.ok(topbar.includes("即将开放"), "disabled reason must be visible");
+});
+
+test("V3-006: pages use the typed persistence boundary", () => {
+  for (const page of [dashboard, todayView, learning]) {
+    assert.equal(
+      page.includes("window.localStorage"),
+      false,
+      "page must not access localStorage directly",
+    );
+    assert.ok(page.includes("createWorkspaceRepository"), "page must use repository");
+  }
+  assert.ok(persistence.includes("migrateDailyLoopV1ToV2"));
+  assert.ok(persistence.includes("saveDailyLoop"));
+});
+
+test("V3-006: migration recovery is handled at the repository boundary", () => {
+  assert.ok(persistence.includes("catch"));
+  assert.ok(persistence.includes("loadV1DailyLoop"));
 });
 
 // ---- V3-005: one shell, one dashboard, no legacy module shell ----
