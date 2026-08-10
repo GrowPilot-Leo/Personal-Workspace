@@ -90,9 +90,9 @@ test("V3-003: prompt copy surfaces success and failure", () => {
   assert.ok(quickPrompts.includes("已复制") && quickPrompts.includes("复制失败"));
 });
 
-test("V3-003: search is explicitly disabled until implemented", () => {
-  assert.ok(topbar.includes("disabled"), "search input must be disabled");
-  assert.ok(topbar.includes("即将开放"), "disabled reason must be visible");
+test("V3-003: unavailable search is absent from the application chrome", () => {
+  assert.equal(topbar.includes('type="search"'), false);
+  assert.ok(topbar.includes("PERSONAL WORKSPACE"));
 });
 
 test("V3-006: pages use the typed persistence boundary", () => {
