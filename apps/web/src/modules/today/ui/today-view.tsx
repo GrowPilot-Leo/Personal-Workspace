@@ -7,7 +7,6 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
-  CheckCircle2,
   Circle,
   Clock3,
   Edit3,
@@ -85,6 +84,7 @@ export function TodayModule() {
   );
   const totalMinutes = plannedMinutes(state);
   const workload = Math.min(100, Math.round((totalMinutes / state.availableMinutes) * 100));
+  const overCapacity = totalMinutes > state.availableMinutes;
 
   const startNextTask = () => {
     if (!nextTask) return;
@@ -201,9 +201,14 @@ export function TodayModule() {
                 按顺序完成，避免同时推进太多任务。
               </p>
             </div>
-            <Link className="tertiary-action" href="/learning">
-              <Edit3 size={14} aria-hidden="true" /> 编辑
-            </Link>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">
+                {view.completed}/{view.planned} 完成
+              </span>
+              <Link className="tertiary-action" href="/learning">
+                <Edit3 size={14} aria-hidden="true" /> 编辑
+              </Link>
+            </div>
           </header>
 
           {state.tasks.length ? (
@@ -301,7 +306,7 @@ export function TodayModule() {
               >
                 <span style={{ width: `${workload}%` }} />
               </div>
-              <p>{workload > 100 ? "计划已超出容量，请缩小任务范围。" : "保留余量比排满一天更容易完成。"}</p>
+              <p>{overCapacity ? "计划已超出容量，请缩小任务范围。" : "保留余量比排满一天更容易完成。"}</p>
             </section>
 
             <section className="insight-section">
@@ -324,9 +329,6 @@ export function TodayModule() {
         </aside>
       </div>
 
-      <p className="sr-only">
-        已完成 {view.completed}/{view.planned} 项任务。
-      </p>
     </section>
   );
 }
