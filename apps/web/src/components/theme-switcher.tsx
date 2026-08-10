@@ -4,12 +4,11 @@ import { useTheme } from "@/shared/theme/theme-provider";
 import type { Theme } from "@/shared/theme/theme";
 
 const options: { value: Theme; label: string; hint: string }[] = [
-  { value: "day", label: "夏日", hint: "明亮海滩" },
-  { value: "night", label: "夜间", hint: "深海夜色" },
-  { value: "dusk", label: "暮色", hint: "海边日落" },
+  { value: "day", label: "日间", hint: "暖灰白工作环境" },
+  { value: "night", label: "夜间", hint: "低亮度专注环境" },
+  { value: "dusk", label: "暮色", hint: "温暖低饱和环境" },
 ];
 
-/** Theme shortcut. Full appearance controls live in Settings. */
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
   return (
