@@ -115,7 +115,10 @@ Expected: the Stage 3 branch head equals the merged `main` head before the first
 - Modify: `apps/web/src/core/plans.ts`
 - Modify: `apps/web/src/core/reviews.ts`
 - Modify: `apps/web/src/core/events.ts`
+- Modify: `apps/web/src/core/migrations.ts`
+- Modify: `apps/web/src/core/migrations.test.mjs`
 - Modify: `apps/web/src/core/contracts.test.mjs`
+- Modify: `apps/web/src/modules/modules.test.mjs`
 
 ### Step 1: Write failing contract tests
 
@@ -174,9 +177,9 @@ In `reviews.ts`, add `ownerEntityId: EntityId | null` and require the caller to 
 
 Extend only the Stage 3 domain-event literals. Do not add a new event bus.
 
-### Step 3: Update old contract fixtures
+### Step 3: Update all existing constructors and fixtures
 
-Update every existing `Task`, `Plan`, and `Review` fixture in `contracts.test.mjs` with explicit ownership and date fields. Do not add permissive defaults just to keep old tests green.
+Update every existing `Task`, `Plan`, and `Review` construction in `contracts.test.mjs`, `modules.test.mjs`, `migrations.ts`, and `migrations.test.mjs` with explicit ownership and date fields. The compatibility migration must use `learning-space-v1-daily-loop` as owner and the V1 active date as `scheduledDate`. Do not add permissive defaults just to keep old tests green.
 
 ### Step 4: Verify
 
@@ -190,7 +193,7 @@ Expected: PASS.
 ### Step 5: Commit
 
 ~~~powershell
-git add apps/web/src/core/tasks.ts apps/web/src/core/plans.ts apps/web/src/core/reviews.ts apps/web/src/core/events.ts apps/web/src/core/contracts.test.mjs
+git add apps/web/src/core/tasks.ts apps/web/src/core/plans.ts apps/web/src/core/reviews.ts apps/web/src/core/events.ts apps/web/src/core/migrations.ts apps/web/src/core/migrations.test.mjs apps/web/src/core/contracts.test.mjs apps/web/src/modules/modules.test.mjs
 git commit -m "feat(core): add owned scheduled task contracts"
 ~~~
 
@@ -220,6 +223,7 @@ Cover these rules:
 - a paused space cannot schedule a new task
 - an archived space cannot be edited or scheduled
 - archive preserves plans and tasks
+- removing one confirmed learning bundle preserves every unrelated space, plan, task, review, and event
 - direct plan edits append versions through `revisePlan`
 - task summaries expose source space identity to Today
 
