@@ -37,8 +37,7 @@ export function DashboardModule() {
             {data.goal ? ` · ${data.goal}` : " · 尚未设置阶段目标"}
           </p>
         </div>
-        <Link className="summer-action-button" href="/today">
-          <span className="summer-float-icon" aria-hidden="true">🐤</span>
+        <Link className="primary-action" href="/today">
           进入今日行动 <ArrowRight size={15} aria-hidden="true" />
         </Link>
       </header>
