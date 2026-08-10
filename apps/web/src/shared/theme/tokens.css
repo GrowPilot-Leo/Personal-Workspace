@@ -3,7 +3,7 @@
   --color-bg-canvas: #f6f6f3;
   --color-bg-surface: #ffffff;
   --color-text-primary: #252523;
-  --color-text-muted: #6f716d;
+  --color-text-muted: #60625e;
   --color-action-primary: #2f6feb;
   --color-ai-accent: #6555c7;
   --color-success: #2f7d52;
@@ -22,7 +22,7 @@
   --motion-transition: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --ink: #252523;
-  --muted: #6f716d;
+  --muted: #60625e;
   --line: #dedfda;
   --surface: #ffffff;
   --canvas: #f6f6f3;
@@ -44,7 +44,7 @@
   --secondary: 60 8% 93%;
   --secondary-foreground: 60 3% 19%;
   --muted: 60 8% 93%;
-  --muted-foreground: 80 2% 44%;
+  --muted-foreground: 80 2% 38%;
   --accent: 220 60% 95%;
   --accent-foreground: 219 65% 38%;
   --destructive: 0 44% 50%;
