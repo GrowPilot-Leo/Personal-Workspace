@@ -17,12 +17,11 @@ import {
   completedTaskCount,
   createEmptyDailyLoopState,
   createId,
-  loadDailyLoop,
   plannedMinutes,
   rollDailyLoopForward,
-  saveDailyLoop,
   type DailyLoopState,
 } from "@/core/daily-loop";
+import { createWorkspaceRepository } from "@/core/persistence";
 
 type ReviewDraft = {
   wins: string;
@@ -40,14 +39,14 @@ export function LearningModule() {
   const [review, setReview] = useState<ReviewDraft>(emptyReview);
 
   useEffect(() => {
-    const stored = loadDailyLoop(window.localStorage);
+    const stored = createWorkspaceRepository(window.localStorage).loadDailyLoop();
     setState(stored);
     setReview(stored.review ?? emptyReview);
     setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (hydrated) saveDailyLoop(window.localStorage, state);
+    if (hydrated) createWorkspaceRepository(window.localStorage).saveDailyLoop(state);
   }, [hydrated, state]);
 
   const completed = completedTaskCount(state);
