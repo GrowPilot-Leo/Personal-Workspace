@@ -158,7 +158,8 @@ test("quick prompt reports copy failure instead of swallowing the error", async 
   await page.goto("/dashboard");
 
   await page.getByRole("button", { name: /复盘今日/ }).click();
-  await expect(page.getByText("复制失败")).toBeVisible();
+  await expect(page.getByRole("button", { name: "复盘今日，点击复制到剪贴板" })).toContainText("复制失败");
+  await expect(page.locator('[aria-live="polite"]')).toContainText("复制失败");
 });
 
 test("critical and serious axe violations are absent on core daily-loop pages", async ({ page }) => {
