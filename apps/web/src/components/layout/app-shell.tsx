@@ -12,8 +12,8 @@ import { useTheme } from "@/shared/theme/theme-provider";
 
 /**
  * Workbench shell: desktop Sidebar + TopBar + main workspace.
- * Mobile (< md): the desktop sidebar is hidden; a bottom nav (5 primary
- * tabs) and a hamburger drawer (all nine entries) replace it. Safe-area
+ * Mobile (< md): the desktop sidebar is hidden; a bottom nav (4 daily-loop
+ * tabs) and a hamburger drawer (5 complementary entries) replace it. Safe-area
  * insets are handled by the fixed mobile nav.
  *
  * The main content area uses the semantic card surface so text keeps
