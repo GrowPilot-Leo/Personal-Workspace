@@ -21,6 +21,8 @@ import {
 import { cn } from "@/lib/utils";
 import { moduleRegistry, type ModuleKey } from "@/lib/module-registry";
 
+const drawerKeys: ModuleKey[] = ["career", "english", "fitness", "badge", "settings"];
+
 const icons: Record<ModuleKey, LucideIcon> = {
   today: Sun,
   learning: BookOpen,
@@ -38,7 +40,7 @@ type MobileDrawerProps = {
   onClose: () => void;
 };
 
-/** Mobile module drawer with focus entry, trapping and restoration. */
+/** Mobile drawer for secondary modules only, with focus entry, trapping and restoration. */
 export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const pathname = usePathname();
   const dialogRef = useRef<HTMLElement>(null);
@@ -129,7 +131,9 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               </button>
             </header>
             <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
-              {moduleRegistry.map((module) => {
+              {moduleRegistry
+                .filter((module) => drawerKeys.includes(module.key))
+                .map((module) => {
                 const Icon = icons[module.key];
                 const active = isActive(module.href, module.key);
                 return (
@@ -148,11 +152,11 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                     {module.label}
                   </Link>
                 );
-              })}
+                })}
             </nav>
             <footer className="border-t border-border p-3">
               <p className="px-1 text-[11px] text-muted-foreground">
-                本地数据 · V3 原型验收
+                职业与成长工作区 · 系统设置
               </p>
             </footer>
           </motion.aside>
