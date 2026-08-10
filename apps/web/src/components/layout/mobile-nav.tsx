@@ -27,7 +27,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label="移动端主导航"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_32px_rgba(7,59,76,0.06)] backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_20px_rgba(25,27,24,0.05)] backdrop-blur-xl md:hidden"
     >
       <div className="grid grid-cols-5">
         {tabs.map((tab) => {
