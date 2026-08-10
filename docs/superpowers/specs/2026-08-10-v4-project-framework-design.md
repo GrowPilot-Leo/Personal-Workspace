@@ -160,6 +160,72 @@ type EvidenceReference = {
 
 Badges store evidence references rather than copying source content.
 
+### 6.5 Stage 3–4 records
+
+```ts
+type LearningSpace = {
+  id: string;
+  name: string;
+  goal: string;
+  status: "draft" | "planned" | "active" | "paused" | "completed" | "archived";
+  templateId: string | null;
+  currentMonthlyPlanId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type Review = {
+  id: string;
+  cadence: "daily" | "weekly" | "monthly";
+  scopeModule: "workspace" | "learning" | "career" | "english" | "fitness";
+  scopeEntityId: string | null;
+  date: string;
+  summary: string;
+  blockers: string;
+  adjustment: string;
+  createdAt: string;
+};
+
+type KnowledgeResource = {
+  id: string;
+  title: string;
+  sourceType: "text";
+  scopeModule: "global" | "learning" | "career" | "english" | "fitness";
+  scopeEntityId: string | null;
+  status: "queued" | "ready" | "failed" | "deleted";
+  version: number;
+  content: string;
+  createdAt: string;
+};
+
+type Citation = {
+  id: string;
+  resourceId: string;
+  resourceVersion: number;
+  location: string;
+  excerpt: string;
+};
+
+type Badge = {
+  id: string;
+  title: string;
+  status: "planned" | "active" | "completed" | "verified";
+  evidenceIds: string[];
+};
+
+type DomainEvent = {
+  eventId: string;
+  eventType: string;
+  moduleId: string;
+  entityId: string;
+  schemaVersion: number;
+  occurredAt: string;
+  payload: unknown;
+};
+```
+
+The prototype accepts real text resources only. File parsing, media storage and vector indexing remain later adapters.
+
 ## 7. Prototype Persistence
 
 The prototype uses one validated and versioned local root document:
@@ -177,6 +243,7 @@ type WorkspaceStateV2 = {
   proposals: PlanRevisionProposal[];
   badges: Badge[];
   evidence: EvidenceReference[];
+  events: DomainEvent[];
   updatedAt: string;
 };
 ```
