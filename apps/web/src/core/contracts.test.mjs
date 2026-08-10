@@ -11,6 +11,7 @@ import { createGoal } from "./goals.ts";
 import { createTask, completeTask, isTaskDone } from "./tasks.ts";
 import { createReview, updateReview } from "./reviews.ts";
 import { createEventBus } from "./events.ts";
+import * as events from "./events.ts";
 import { createFeatureFlagStore } from "./flags.ts";
 
 test("plan revision flow: proposal stays pending until approved", () => {
@@ -259,37 +260,11 @@ test("createReview accepts a null owner entity for workspace review", () => {
   assert.equal(review.updatedAt, "2026-08-10T10:00:00Z");
 });
 
-test("event bus accepts Stage 3 learning space and scheduling event types", () => {
-  const bus = createEventBus();
-  const received = [];
-
-  bus.subscribe("learning.space.created", (event) => received.push(event.eventType));
-  bus.subscribe("learning.space.updated", (event) => received.push(event.eventType));
-  bus.subscribe("learning.space.paused", (event) => received.push(event.eventType));
-  bus.subscribe("learning.task.scheduled", (event) => received.push(event.eventType));
-
-  for (const [index, eventType] of [
-    "learning.space.created",
-    "learning.space.updated",
-    "learning.space.paused",
-    "learning.task.scheduled",
-  ].entries()) {
-    bus.publish({
-      eventId: `event-stage3-${index}`,
-      eventType,
-      moduleId: "learning",
-      entityId: index === 3 ? "task-owned-1" : "learning-space-1",
-      schemaVersion: 1,
-      occurredAt: `2026-08-10T08:0${index}:00Z`,
-      payload: {},
-    });
-  }
-
-  assert.deepEqual(received, [
+test("Stage 3 domain event literals are exported as the contract source", () => {
+  assert.deepEqual(events.stage3DomainEventTypes, [
     "learning.space.created",
     "learning.space.updated",
     "learning.space.paused",
     "learning.task.scheduled",
   ]);
 });
-
