@@ -37,7 +37,7 @@ export function TodayModule() {
   const taskSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setState(createWorkspaceRepository(window.localStorage).loadDailyLoop());
+    setState(createBrowserWorkspaceRepository().loadDailyLoop());
     setHydrated(true);
   }, []);
 
