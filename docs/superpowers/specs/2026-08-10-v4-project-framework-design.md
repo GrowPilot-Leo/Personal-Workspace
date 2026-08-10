@@ -1,7 +1,7 @@
 # GrowPilot V4 Project Framework Design
 
 **Date:** 2026-08-10  
-**Status:** Approved design baseline pending written-spec review  
+**Status:** Approved implementation baseline  
 **Branch:** `codex/v3-calm-timeline`  
 **Draft PR:** #6
 
