@@ -25,7 +25,7 @@ import {
 } from "@/shared/theme/theme";
 
 const themeOptions: { value: Theme; label: string; description: string }[] = [
-  { value: "day", label: "夏日", description: "海水蓝、阳光黄与浅沙色" },
+  { value: "day", label: "日间", description: "暖灰白画布与克制蓝色操作" },
   { value: "night", label: "夜间", description: "低亮度深海工作环境" },
   { value: "dusk", label: "暮色", description: "温暖的海边日落色调" },
 ];
@@ -234,7 +234,7 @@ export function SettingsModule() {
         ) : null}
       </article>
 
-      <article className="summer-glass-card flex gap-3 rounded-3xl p-5">
+      <article className="calm-surface flex gap-3 rounded-3xl p-5">
         <ShieldCheck size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
         <div>
           <h2 className="text-sm font-semibold">隐私边界</h2>
