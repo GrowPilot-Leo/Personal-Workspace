@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { motion } from "motion/react";
+import { MotionConfig, motion } from "motion/react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { MobileDrawer } from "@/components/layout/mobile-drawer";
 import { pageEnter } from "@/lib/motion-variants";
+import { useTheme } from "@/shared/theme/theme-provider";
 
 /**
  * Workbench shell: desktop Sidebar + TopBar + main workspace.
@@ -23,9 +24,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
+  const { motion: motionPreference } = useTheme();
+  const reducedMotion =
+    motionPreference === "full"
+      ? "never"
+      : motionPreference === "system"
+        ? "user"
+        : "always";
 
   return (
-    <div className="grid-bg radial-fade flex h-screen w-full overflow-hidden bg-background text-foreground">
+    <MotionConfig reducedMotion={reducedMotion}>
+      <div className="grid-bg radial-fade flex h-screen w-full overflow-hidden bg-background text-foreground">
       <div className="hidden md:block">
         <Sidebar collapsed={collapsed} />
       </div>
@@ -51,7 +60,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MobileNav />
-      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </div>
+        <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      </div>
+    </MotionConfig>
   );
 }
