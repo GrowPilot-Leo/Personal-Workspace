@@ -23,6 +23,13 @@ export type WorkspaceRepository = {
   lastMigration(): MigrationRecord | null;
 };
 
+export function createBrowserWorkspaceRepository(): WorkspaceRepository {
+  if (typeof window === "undefined") {
+    throw new Error("Browser workspace repository requires a browser environment");
+  }
+  return createWorkspaceRepository(window.localStorage);
+}
+
 export function createWorkspaceRepository(storage: StorageLike): WorkspaceRepository {
   let migration: MigrationRecord | null = null;
 
