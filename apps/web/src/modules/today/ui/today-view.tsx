@@ -50,8 +50,17 @@ export function TodayModule() {
    */
   const startToday = () => {
     setStarted(true);
+    const systemReduced =
+      document.documentElement.dataset.motion === "system" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const behavior =
+      document.documentElement.dataset.motion === "reduced" ||
+      document.documentElement.dataset.motion === "off" ||
+      systemReduced
+        ? "auto"
+        : "smooth";
     window.setTimeout(() => {
-      taskSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      taskSectionRef.current?.scrollIntoView({ behavior, block: "start" });
     }, 60);
   };
 
