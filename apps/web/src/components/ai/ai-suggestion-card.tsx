@@ -1,18 +1,18 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { Compass } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 
-type AiSuggestionCardProps = {
+type ActionSuggestionCardProps = {
   suggestion: string;
 };
 
-/** AI 建议 — driven by the real V1 next-day suggestion rule. */
-export function AiSuggestionCard({ suggestion }: AiSuggestionCardProps) {
+/** Deterministic action suggestion derived from the real daily-loop state. */
+export function AiSuggestionCard({ suggestion }: ActionSuggestionCardProps) {
   return (
-    <DashboardCard title="AI 建议" icon={<Sparkles size={14} className="text-ai-accent" />}>
+    <DashboardCard title="行动建议" icon={<Compass size={14} className="text-primary" />}>
       <p className="text-[13px] leading-relaxed text-foreground/90">{suggestion}</p>
-      <p className="mt-2 text-[11px] text-muted-foreground">基于真实任务状态生成</p>
+      <p className="mt-2 text-[11px] text-muted-foreground">规则建议，不会自动修改计划</p>
     </DashboardCard>
   );
 }

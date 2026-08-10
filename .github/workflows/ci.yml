@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: ["agent/**"]
+    branches: ["agent/**", "v3/**", "codex/**"]
 
 permissions:
   contents: read
@@ -34,3 +34,7 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Browser regression and accessibility tests
+        run: npm run test:e2e

@@ -7,28 +7,30 @@ import {
   sheetOpen,
 } from "./motion-variants.ts";
 
-test("pageEnter animates opacity 0->1 and y 8->0", () => {
+test("pageEnter uses near-static travel and settles quickly", () => {
   assert.equal(pageEnter.initial.opacity, 0);
   assert.equal(pageEnter.animate.opacity, 1);
-  assert.equal(pageEnter.initial.y, 8);
+  assert.equal(pageEnter.initial.y, 4);
   assert.equal(pageEnter.animate.y, 0);
-  assert.ok(pageEnter.transition.duration <= 0.4, "page enter stays under 400ms");
+  assert.ok(pageEnter.transition.duration <= 0.22);
 });
 
-test("cardHover lifts by 2px with a short duration", () => {
-  assert.equal(cardHover.whileHover.y, -2);
-  assert.ok(cardHover.transition.duration <= 0.25, "card hover stays subtle");
+test("cards do not float on hover and only acknowledge a press", () => {
+  assert.equal(cardHover.whileHover.y, 0);
+  assert.equal(cardHover.whileHover.scale, 1);
+  assert.equal(cardHover.whileTap.scale, 0.995);
 });
 
-test("dialogOpen scales from 0.96 with fade", () => {
-  assert.equal(dialogOpen.initial.scale, 0.96);
+test("dialogOpen uses a restrained scale and strongly damped spring", () => {
+  assert.equal(dialogOpen.initial.scale, 0.985);
   assert.equal(dialogOpen.animate.scale, 1);
-  assert.equal(dialogOpen.initial.opacity, 0);
-  assert.equal(dialogOpen.animate.opacity, 1);
+  assert.equal(dialogOpen.transition.type, "spring");
+  assert.ok(dialogOpen.transition.damping >= 38);
 });
 
-test("sheetOpen slides from the right with fade", () => {
-  assert.equal(sheetOpen.initial.x, 40);
+test("sheetOpen uses short travel and a strongly damped spring", () => {
+  assert.equal(sheetOpen.initial.x, 20);
   assert.equal(sheetOpen.animate.x, 0);
-  assert.equal(sheetOpen.initial.opacity, 0);
+  assert.equal(sheetOpen.transition.type, "spring");
+  assert.ok(sheetOpen.transition.damping >= 40);
 });

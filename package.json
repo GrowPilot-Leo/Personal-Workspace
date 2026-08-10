@@ -11,10 +11,15 @@
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build",
     "typecheck": "npm --workspace apps/web run typecheck",
-    "test": "node --experimental-strip-types --test apps/web/src/core/daily-loop.test.mjs apps/web/src/core/migrations.test.mjs apps/web/src/core/contracts.test.mjs apps/web/src/modules/modules.test.mjs apps/web/src/shared/theme/theme.test.mjs apps/web/src/shared/theme/theme-storage.test.mjs apps/web/src/shared/theme/theme-provider.test.mjs apps/web/src/lib/module-registry.test.mjs apps/web/src/modules/today/ui/today-actions.test.mjs apps/web/src/lib/motion-variants.test.mjs apps/web/src/components/dashboard/dashboard-data.test.mjs"
+    "test": "node --experimental-strip-types --test apps/web/src/core/daily-loop.test.mjs apps/web/src/core/migrations.test.mjs apps/web/src/core/persistence.test.mjs apps/web/src/core/contracts.test.mjs apps/web/src/modules/modules.test.mjs apps/web/src/shared/theme/theme.test.mjs apps/web/src/shared/theme/theme-storage.test.mjs apps/web/src/shared/theme/theme-provider.test.mjs apps/web/src/lib/module-registry.test.mjs apps/web/src/modules/today/ui/today-actions.test.mjs apps/web/src/lib/motion-variants.test.mjs apps/web/src/components/dashboard/dashboard-data.test.mjs apps/web/src/v3-gate.test.mjs",
+    "test:e2e": "playwright test"
   },
   "overrides": {
     "postcss": "8.5.25",
     "sharp": "0.35.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1"
   }
 }

@@ -1,19 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
 import {
   ArrowRight,
   CalendarDays,
-  CheckCircle2,
+  Check,
   Circle,
   Clock3,
+  Edit3,
+  RotateCcw,
   Target,
 } from "lucide-react";
 import {
   createEmptyDailyLoopState,
-  loadDailyLoop,
+  plannedMinutes,
   type DailyLoopState,
+  type DailyTask,
 } from "@/core/daily-loop";
+import { createBrowserWorkspaceRepository } from "@/core/persistence";
 import { buildTodayViewState } from "./today-actions.ts";
 
 function displayDate(dateKey: string) {
@@ -25,130 +31,304 @@ function displayDate(dateKey: string) {
   }).format(new Date(year, month - 1, day));
 }
 
-/**
- * Action-first Today view. Aggregates the real V1 daily-loop state; no
- * invented progress values. Tasks carry a module-source chip.
- *
- * Visual rules: high-contrast zinc text scale on solid white cards;
- * borders are black/5, shadows are subtle. No transparency or blur on
- * content surfaces.
- */
+function scrollBehavior(): ScrollBehavior {
+  const systemReduced =
+    document.documentElement.dataset.motion === "system" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return document.documentElement.dataset.motion === "reduced" ||
+    document.documentElement.dataset.motion === "off" ||
+    systemReduced
+    ? "auto"
+    : "smooth";
+}
+
+function offsetLabel(tasks: DailyTask[], index: number) {
+  const before = tasks
+    .slice(0, index)
+    .reduce((total, task) => total + task.durationMinutes, 0);
+  return before === 0 ? "起点" : `+${before}m`;
+}
+
+type RhythmStatus = "pending" | "current" | "done";
+
+function rhythmStatus(index: number, state: DailyLoopState): RhythmStatus {
+  const planned = Boolean(state.goal && state.tasks.length);
+  const allTasksDone = state.tasks.length > 0 && state.tasks.every((task) => task.completedAt);
+
+  if (index === 0) return planned ? "done" : "current";
+  if (index === 1) {
+    if (!planned) return "pending";
+    return allTasksDone ? "done" : "current";
+  }
+  if (state.review) return "done";
+  return allTasksDone ? "current" : "pending";
+}
+
+/** A restrained daily workspace: guided rhythm, real timeline, one primary action. */
 export function TodayModule() {
   const [state, setState] = useState<DailyLoopState>(() => createEmptyDailyLoopState());
   const [hydrated, setHydrated] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const timelineRef = useRef<HTMLOListElement>(null);
 
   useEffect(() => {
-    setState(loadDailyLoop(window.localStorage));
+    setState(createBrowserWorkspaceRepository().loadDailyLoop());
     setHydrated(true);
   }, []);
 
   const view = useMemo(() => buildTodayViewState(state, false), [state]);
+  const nextTask = useMemo(
+    () => state.tasks.find((task) => !task.completedAt) ?? null,
+    [state.tasks],
+  );
+  const totalMinutes = plannedMinutes(state);
+  const workload = Math.min(100, Math.round((totalMinutes / state.availableMinutes) * 100));
+  const overCapacity = totalMinutes > state.availableMinutes;
+
+  const startNextTask = () => {
+    if (!nextTask) return;
+    setActiveTaskId(nextTask.id);
+    setAnnouncement(`已开始：${nextTask.title}`);
+    window.setTimeout(() => {
+      timelineRef.current
+        ?.querySelector<HTMLElement>(`[data-task-id="${nextTask.id}"]`)
+        ?.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
+    }, 30);
+  };
+
+  const toggleTask = (taskId: string) => {
+    const next: DailyLoopState = {
+      ...state,
+      tasks: state.tasks.map((task) =>
+        task.id === taskId
+          ? { ...task, completedAt: task.completedAt ? null : new Date().toISOString() }
+          : task,
+      ),
+      updatedAt: new Date().toISOString(),
+    };
+    const changed = next.tasks.find((task) => task.id === taskId);
+    createBrowserWorkspaceRepository().saveDailyLoop(next);
+    setState(next);
+    setAnnouncement(
+      changed?.completedAt
+        ? `已完成：${changed.title}`
+        : `已恢复为待完成：${changed?.title ?? "任务"}`,
+    );
+    if (changed?.completedAt && activeTaskId === taskId) setActiveTaskId(null);
+  };
 
   if (!hydrated) {
-    return (
-      <section className="space-y-5">
-        <p className="text-sm text-zinc-500">加载今日行动…</p>
-      </section>
-    );
+    return <p className="text-sm text-muted-foreground">加载今日安排…</p>;
   }
 
+  const allDone = state.tasks.length > 0 && !nextTask;
+  const rhythm = [
+    { label: "计划", note: "确认目标与容量" },
+    { label: "执行", note: "专注下一项" },
+    { label: "复盘", note: "记录并调整" },
+  ];
+
   return (
-    <section className="space-y-5">
+    <section className="space-y-7">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">
-            TODAY
-          </span>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <CalendarDays size={13} aria-hidden="true" />
+            {displayDate(view.date)}
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-[38px]">
             今日行动
           </h1>
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-zinc-500">
-            <CalendarDays size={14} aria-hidden="true" />
-            {displayDate(view.date)}
-            {view.goal ? ` · ${view.goal}` : " · 先设定一个阶段目标"}
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+            {view.goal || "先决定今天真正要推进的一件事。"}
           </p>
         </div>
-        <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-          type="button"
-        >
-          开始今日行动<ArrowRight size={15} />
-        </button>
+
+        {state.tasks.length === 0 ? (
+          <Link className="primary-action" href="/learning">
+            安排今天 <ArrowRight size={15} aria-hidden="true" />
+          </Link>
+        ) : allDone ? (
+          <Link className="primary-action" href="/review">
+            开始复盘 <RotateCcw size={15} aria-hidden="true" />
+          </Link>
+        ) : (
+          <motion.button
+            className="primary-action"
+            onClick={startNextTask}
+            transition={{ duration: 0.12 }}
+            type="button"
+            whileTap={{ scale: 0.985 }}
+          >
+            {activeTaskId === nextTask?.id ? "正在进行" : "开始下一项"}
+            <span className="max-w-48 truncate">：{nextTask?.title}</span>
+            <ArrowRight size={15} aria-hidden="true" />
+          </motion.button>
+        )}
+        <span aria-live="polite" className="sr-only">{announcement}</span>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3" role="list" aria-label="今日概览">
-        <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-zinc-500">
-            <Clock3 size={15} aria-hidden="true" />
-            <span className="text-xs">计划分钟</span>
-          </div>
-          <strong className="mt-2 block text-2xl font-semibold text-zinc-900">
-            {view.totalMinutes}
-          </strong>
+      <section aria-labelledby="rhythm-title">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 id="rhythm-title" className="text-xs font-semibold text-foreground">今日节奏</h2>
+          <span className="text-[11px] text-muted-foreground">每一步都有明确出口</span>
         </div>
-        <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-zinc-500">
-            <CheckCircle2 size={15} aria-hidden="true" />
-            <span className="text-xs">任务完成</span>
-          </div>
-          <strong className="mt-2 block text-2xl font-semibold text-zinc-900">
-            {view.completed}/{view.planned}
-          </strong>
-        </div>
-        <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-zinc-500">
-            <Target size={15} aria-hidden="true" />
-            <span className="text-xs">当前目标</span>
-          </div>
-          <strong className="mt-2 block text-2xl font-semibold text-zinc-900">
-            {view.goal ? "进行中" : "未设定"}
-          </strong>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-sm text-zinc-900">
-        <h2 className="text-base font-semibold text-zinc-900">今日任务</h2>
-        {state.tasks.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">
-            今天还没有任务。围绕目标创建 1～3 个可完成的行动。
-          </p>
-        ) : (
-          <ul className="mt-2 list-none">
-            {state.tasks.map((task) => (
-              <li
-                key={task.id}
-                className="flex items-center gap-3 border-t border-black/5 py-3 text-sm"
-              >
-                {task.completedAt ? (
-                  <CheckCircle2 size={17} className="shrink-0 text-emerald-600" aria-hidden="true" />
-                ) : (
-                  <Circle size={17} className="shrink-0 text-zinc-400" aria-hidden="true" />
-                )}
-                <span
-                  className={
-                    task.completedAt
-                      ? "min-w-0 truncate text-zinc-400 line-through"
-                      : "min-w-0 truncate text-zinc-700"
-                  }
-                >
-                  {task.title}
+        <ol className="rhythm-bar list-none">
+          {rhythm.map((step, index) => {
+            const status = rhythmStatus(index, state);
+            return (
+              <li className={`rhythm-step ${status}`} key={step.label}>
+                <span className="rhythm-step-number" aria-hidden="true">
+                  {status === "done" ? <Check size={13} /> : index + 1}
                 </span>
-                <span className="ml-auto shrink-0 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] text-zinc-600">
-                  {task.durationMinutes} 分钟
-                </span>
-                <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] text-zinc-600">
-                  每日循环
+                <span>
+                  <strong>{step.label}</strong>
+                  <small>{step.note}</small>
                 </span>
               </li>
-            ))}
-          </ul>
-        )}
+            );
+          })}
+        </ol>
+      </section>
+
+      <div className="daily-layout">
+        <section className="calm-surface timeline-panel" aria-labelledby="timeline-title">
+          <header className="flex items-start justify-between gap-4">
+            <div>
+              <h2 id="timeline-title" className="text-base font-semibold">今日时间线</h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                按顺序完成，避免同时推进太多任务。
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">
+                {view.completed}/{view.planned} 完成
+              </span>
+              <Link className="tertiary-action" href="/learning">
+                <Edit3 size={14} aria-hidden="true" /> 编辑
+              </Link>
+            </div>
+          </header>
+
+          {state.tasks.length ? (
+            <ol ref={timelineRef} aria-label="今日时间线" className="timeline-list">
+              {state.tasks.map((task, index) => {
+                const active = activeTaskId === task.id && !task.completedAt;
+                return (
+                  <motion.li
+                    data-task-id={task.id}
+                    className="timeline-item"
+                    key={task.id}
+                    layout
+                    transition={{ duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }}
+                  >
+                    <span className="timeline-slot">
+                      {offsetLabel(state.tasks, index)}
+                    </span>
+                    <span
+                      className={
+                        task.completedAt
+                          ? "timeline-marker done"
+                          : active
+                            ? "timeline-marker active"
+                            : "timeline-marker"
+                      }
+                      aria-hidden="true"
+                    >
+                      {task.completedAt ? <Check size={14} /> : <Circle size={12} />}
+                    </span>
+                    <div className="timeline-content">
+                      <div className="timeline-content-row">
+                        <div className="timeline-task-copy">
+                          <strong className={task.completedAt ? "text-muted-foreground line-through" : ""}>
+                            {task.title}
+                          </strong>
+                          <small>
+                            {task.durationMinutes} 分钟
+                            {active ? " · 正在进行" : task.completedAt ? " · 已完成" : ""}
+                          </small>
+                        </div>
+                        <button
+                          aria-label={
+                            task.completedAt
+                              ? `撤销完成：${task.title}`
+                              : `完成任务：${task.title}`
+                          }
+                          className="timeline-complete"
+                          onClick={() => toggleTask(task.id)}
+                          type="button"
+                        >
+                          {task.completedAt ? "撤销" : "完成"}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.li>
+                );
+              })}
+            </ol>
+          ) : (
+            <div className="py-12 text-center">
+              <Clock3 className="mx-auto text-muted-foreground" size={20} aria-hidden="true" />
+              <h3 className="mt-3 text-sm font-semibold">今天还没有安排</h3>
+              <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-muted-foreground">
+                从一个 10～60 分钟、能够验证结果的任务开始。
+              </p>
+              <Link className="secondary-action mt-5" href="/learning">建立今日计划</Link>
+            </div>
+          )}
+        </section>
+
+        <aside className="calm-surface p-5" aria-label="今日辅助信息">
+          <div className="insight-stack">
+            <section className="insight-section">
+              <div className="flex items-center gap-2">
+                <Target size={14} className="text-primary" aria-hidden="true" />
+                <h2>今日目标</h2>
+              </div>
+              <p>{state.goal || "尚未设置阶段目标。"}</p>
+            </section>
+
+            <section className="insight-section">
+              <div className="flex items-center justify-between gap-3">
+                <h2>工作量</h2>
+                <span className="text-[11px] text-muted-foreground">
+                  {totalMinutes}/{state.availableMinutes} 分钟
+                </span>
+              </div>
+              <div
+                className="workload-track"
+                role="progressbar"
+                aria-label="今日工作量"
+                aria-valuemin={0}
+                aria-valuemax={state.availableMinutes}
+                aria-valuenow={Math.min(totalMinutes, state.availableMinutes)}
+              >
+                <span style={{ width: `${workload}%` }} />
+              </div>
+              <p>{overCapacity ? "计划已超出容量，请缩小任务范围。" : "保留余量比排满一天更容易完成。"}</p>
+            </section>
+
+            <section className="insight-section">
+              <h2>行动建议</h2>
+              <p>{view.suggestion}</p>
+              <small className="mt-2 block text-[10px] text-muted-foreground">
+                规则建议，不会自动修改计划
+              </small>
+            </section>
+
+            <section className="insight-section">
+              <h2>晚间复盘</h2>
+              <p>{state.review ? "今日复盘已记录，可确认下一天。" : "结束前记录结果、阻塞和一个调整。"}</p>
+              <Link className="secondary-action mt-4 w-full" href="/review">
+                {state.review ? "查看复盘" : "进入复盘"}
+                <ArrowRight size={14} aria-hidden="true" />
+              </Link>
+            </section>
+          </div>
+        </aside>
       </div>
 
-      <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-zinc-900">明日建议</h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-700">{view.suggestion}</p>
-      </div>
     </section>
   );
 }

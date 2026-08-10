@@ -120,11 +120,18 @@ export function migrateDailyLoopV1ToV2(
   if (existing?.status === "applied") {
     const raw = storage.getItem(V2_MIGRATED_KEY);
     if (raw) {
-      return {
-        record: existing,
-        payload: JSON.parse(raw) as MigratedDailyLoopV2,
-        backupKey: V1_DAILY_LOOP_BACKUP_KEY,
-      };
+      try {
+        const parsed = JSON.parse(raw) as Partial<MigratedDailyLoopV2>;
+        if (parsed && parsed.schemaVersion === 2) {
+          return {
+            record: existing,
+            payload: parsed as MigratedDailyLoopV2,
+            backupKey: V1_DAILY_LOOP_BACKUP_KEY,
+          };
+        }
+      } catch {
+        // Rebuild from the preserved V1 source below instead of blanking the UI.
+      }
     }
   }
 

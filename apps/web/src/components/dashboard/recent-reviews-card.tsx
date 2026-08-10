@@ -2,20 +2,20 @@
 
 import { History } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
-import { demoReviews } from "@/components/dashboard/dashboard-data";
 
-/** 最近复盘 — demo rows from V1 review history. */
+/**
+ * 最近复盘 — honest empty state until V1 review history is wired through
+ * the V2 repository (V3-006). No invented dates or wins.
+ */
 export function RecentReviewsCard() {
   return (
     <DashboardCard title="最近复盘" icon={<History size={14} className="text-primary" />}>
-      <ul className="space-y-2.5">
-        {demoReviews.map((item) => (
-          <li key={item.id} className="flex items-center gap-2 text-[13px]">
-            <span className="shrink-0 text-[11px] text-muted-foreground">{item.date.slice(5)}</span>
-            <span className="min-w-0 truncate">{item.wins}</span>
-          </li>
-        ))}
-      </ul>
+      <div className="rounded-lg border border-dashed border-border p-4 text-center">
+        <p className="text-[13px] text-muted-foreground">还没有复盘记录</p>
+        <p className="mt-1 text-[11px] text-muted-foreground/80">
+          完成首次复盘后，最近的收获会显示在这里。
+        </p>
+      </div>
     </DashboardCard>
   );
 }

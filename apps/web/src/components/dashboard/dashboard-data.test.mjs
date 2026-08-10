@@ -1,13 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  buildDashboardData,
-  demoKnowledgeUpdates,
-  demoLearningProgress,
-  demoPrompts,
-  demoProjects,
-  demoReviews,
-} from "./dashboard-data.ts";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { buildDashboardData, demoPrompts } from "./dashboard-data.ts";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const source = readFileSync(join(__dirname, "dashboard-data.ts"), "utf8");
 
 const loop = {
   activeDate: "2026-08-06",
@@ -43,17 +42,27 @@ test("buildDashboardData derives real aggregates from daily loop", () => {
   assert.ok(data.suggestion.length > 0);
 });
 
-test("demo rows are non-empty and shaped correctly", () => {
-  assert.ok(demoLearningProgress.length >= 3);
-  assert.ok(demoKnowledgeUpdates.length >= 3);
-  assert.ok(demoProjects.length >= 3);
-  assert.ok(demoPrompts.length >= 3);
-  assert.ok(demoReviews.length >= 3);
+test("buildDashboardData with no tasks shows honest zeros", () => {
+  const empty = { ...loop, tasks: [], goal: "" };
+  const data = buildDashboardData(empty);
+  assert.equal(data.planned, 0);
+  assert.equal(data.completed, 0);
+  assert.equal(data.totalMinutes, 0);
+});
 
-  for (const item of demoLearningProgress) {
-    assert.ok(item.progress >= 0 && item.progress <= 100);
+test("prompt configuration is shaped correctly", () => {
+  assert.ok(demoPrompts.length >= 3);
+  for (const item of demoPrompts) {
+    assert.ok(item.label.length > 0);
+    assert.ok(item.prompt.length > 0);
   }
-  for (const item of demoProjects) {
-    assert.ok(["on-track", "at-risk", "done"].includes(item.status));
-  }
+});
+
+// V3-004: demo business data (learning/projects/knowledge/reviews) must
+// NOT exist in dashboard-data — modules render honest empty states.
+test("no invented business demo rows remain", () => {
+  assert.equal(source.includes("demoLearningProgress"), false);
+  assert.equal(source.includes("demoProjects"), false);
+  assert.equal(source.includes("demoKnowledgeUpdates"), false);
+  assert.equal(source.includes("demoReviews"), false);
 });
