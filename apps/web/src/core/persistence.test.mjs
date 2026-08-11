@@ -106,6 +106,33 @@ test("loadWorkspace runs migration and returns normalized Workspace V2", () => {
   assert.equal(repository.lastMigration()?.status, "applied");
 });
 
+// Mutation caught: loadWorkspace converts a recoverable storage error into an empty workspace.
+test("loadWorkspace propagates migration-log write failures", () => {
+  const rawWorkspace = JSON.stringify(workspaceFixture());
+  const backing = memoryStorage({ [WORKSPACE_V2_KEY]: rawWorkspace });
+  let workspaceWrites = 0;
+  const storage = {
+    getItem: backing.getItem,
+    setItem(key, value) {
+      if (key === MIGRATION_LOG_KEY) {
+        throw new Error("migration log write failed");
+      }
+      if (key === WORKSPACE_V2_KEY) {
+        workspaceWrites += 1;
+      }
+      backing.setItem(key, value);
+    },
+  };
+  const repository = createWorkspaceRepository(storage);
+
+  assert.throws(() => repository.loadWorkspace(), {
+    name: "Error",
+    message: "migration log write failed",
+  });
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), rawWorkspace);
+  assert.equal(workspaceWrites, 0);
+});
+
 // Mutation caught: saveWorkspace stores untrusted fields, malformed collections, or duplicate records.
 test("saveWorkspace persists only normalized Workspace V2 data", () => {
   const storage = memoryStorage();
@@ -263,4 +290,3 @@ test("corrupt V1 data falls back to a usable empty legacy state", () => {
   assert.equal(state.goal, "");
   assert.equal(repository.lastMigration()?.status, "failed");
 });
-
