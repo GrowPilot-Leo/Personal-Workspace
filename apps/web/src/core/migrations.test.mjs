@@ -5,17 +5,25 @@ import {
   V1_DAILY_LOOP_BACKUP_KEY,
   V1_DAILY_LOOP_KEY,
   V2_MIGRATED_KEY,
+  WORKSPACE_V2_CORRUPT_BACKUP_KEY,
+  WORKSPACE_V2_KEY,
   migrateDailyLoopV1ToV2,
+  migrateDailyLoopV1ToWorkspaceV2,
 } from "./migrations.ts";
 
 function memoryStorage(seed = {}) {
   const data = new Map(Object.entries(seed));
+  const writes = [];
   return {
     getItem(key) {
       return data.get(key) ?? null;
     },
     setItem(key, value) {
+      writes.push({ key, value });
       data.set(key, value);
+    },
+    get writes() {
+      return [...writes];
     },
   };
 }
@@ -119,3 +127,298 @@ test("migration fails validation without writing partial state", () => {
   assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
   assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
 });
+
+const WORKSPACE_NOW = "2026-08-11T08:00:00Z";
+const WORKSPACE_LATER = "2026-08-11T09:00:00Z";
+const MIGRATED_SPACE_ID = "learning-space-v1-daily-loop";
+
+const workspaceV1Raw = '{"version":1,"activeDate":"2026-08-03","goal":"Build reliable RAG foundations","availableMinutes":90,"tasks":[{"id":"legacy-task-fixed","title":"Read retrieval notes","durationMinutes":30,"completedAt":"2026-08-03T01:00:00Z","createdAt":"2026-08-02T10:00:00Z"},{"title":"Draw the retrieval flow","durationMinutes":45,"completedAt":null,"createdAt":"2026-08-02T11:00:00Z"}],"review":{"wins":"Finished the retrieval notes","blockers":"Evaluation criteria were unclear","adjustment":"Define the acceptance checks first"}}';
+
+const intermediateSnapshot = {
+  schemaVersion: 2,
+  goal: {
+    id: "intermediate-goal-fixed",
+    title: "Intermediate snapshot goal",
+    description: "",
+    status: "active",
+    createdAt: "2026-08-01T08:00:00Z",
+    updatedAt: "2026-08-01T08:00:00Z",
+    completedAt: null,
+  },
+  tasks: [
+    {
+      id: "intermediate-task-fixed",
+      ownerModuleId: "learning",
+      ownerEntityId: MIGRATED_SPACE_ID,
+      title: "Preserve the intermediate task",
+      description: "",
+      durationMinutes: 25,
+      scheduledDate: "2026-08-01",
+      status: "planned",
+      dueAt: null,
+      completedAt: null,
+      createdAt: "2026-08-01T08:00:00Z",
+      updatedAt: "2026-08-01T08:00:00Z",
+    },
+  ],
+  reviews: [
+    {
+      id: "intermediate-review-fixed",
+      ownerModuleId: "daily-loop",
+      ownerEntityId: MIGRATED_SPACE_ID,
+      horizon: "daily",
+      periodKey: "2026-08-01",
+      wins: "Intermediate review",
+      blockers: "",
+      adjustment: "",
+      submittedAt: "2026-08-01T09:00:00Z",
+      updatedAt: "2026-08-01T09:00:00Z",
+    },
+  ],
+  activeDate: "2026-08-01",
+  migratedAt: "2026-08-01T10:00:00Z",
+  sourceKey: V1_DAILY_LOOP_KEY,
+};
+
+const intermediateRaw = JSON.stringify(intermediateSnapshot);
+
+function existingWorkspaceFixture() {
+  return {
+    version: 2,
+    learningSpaces: [
+      {
+        id: "existing-workspace-space",
+        name: "Existing workspace wins",
+        goal: "Keep this workspace untouched",
+        status: "active",
+        templateId: "blank",
+        currentMonthlyPlanId: null,
+        createdAt: "2026-08-09T08:00:00Z",
+        updatedAt: "2026-08-09T08:00:00Z",
+      },
+    ],
+    plans: [],
+    tasks: [],
+    reviews: [],
+    events: [],
+    updatedAt: "2026-08-09T08:00:00Z",
+  };
+}
+
+function workspaceEntityIds(workspace) {
+  return {
+    learningSpaces: workspace.learningSpaces.map((space) => space.id),
+    plans: workspace.plans.map((plan) => plan.id),
+    tasks: workspace.tasks.map((task) => task.id),
+    reviews: workspace.reviews.map((review) => review.id),
+    events: workspace.events.map((event) => event.eventId),
+  };
+}
+
+function workspaceCollectionLengths(workspace) {
+  return {
+    learningSpaces: workspace.learningSpaces.length,
+    plans: workspace.plans.length,
+    tasks: workspace.tasks.length,
+    reviews: workspace.reviews.length,
+    events: workspace.events.length,
+  };
+}
+
+// Production break caught: V1 migration rewrites raw source, generates unstable
+// ownership/plan data, copies review content into plans, or uses wall-clock timestamps.
+test("workspace migration maps fixed V1 data and preserves its raw backup byte-for-byte", () => {
+  const storage = memoryStorage({ [V1_DAILY_LOOP_KEY]: workspaceV1Raw });
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+
+  assert.equal(result.record.status, "applied");
+  assert.ok(result.payload);
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), workspaceV1Raw);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(result.payload));
+
+  assert.equal(result.payload.version, 2);
+  assert.equal(result.payload.updatedAt, WORKSPACE_NOW);
+  assert.equal(result.payload.learningSpaces.length, 1);
+  const space = result.payload.learningSpaces[0];
+  assert.equal(space.id, MIGRATED_SPACE_ID);
+  assert.equal(space.createdAt, WORKSPACE_NOW);
+  assert.equal(space.updatedAt, WORKSPACE_NOW);
+
+  assert.deepEqual(
+    result.payload.plans.map((plan) => plan.id).sort(),
+    [
+      "learning-plan-v1-daily-2026-08-03",
+      "learning-plan-v1-monthly",
+      "learning-plan-v1-weekly-2026-08-03",
+    ],
+  );
+  for (const plan of result.payload.plans) {
+    assert.equal(plan.ownerModuleId, "learning");
+    assert.equal(plan.ownerEntityId, MIGRATED_SPACE_ID);
+  }
+
+  assert.deepEqual(
+    result.payload.tasks.map((task) => task.id),
+    ["legacy-task-fixed", "v1-task-1-2026-08-03"],
+  );
+  for (const migratedTask of result.payload.tasks) {
+    assert.equal(migratedTask.ownerModuleId, "learning");
+    assert.equal(migratedTask.ownerEntityId, MIGRATED_SPACE_ID);
+    assert.equal(migratedTask.scheduledDate, "2026-08-03");
+    assert.equal(migratedTask.updatedAt, WORKSPACE_NOW);
+  }
+
+  assert.equal(result.payload.reviews.length, 1);
+  const migratedReview = result.payload.reviews[0];
+  assert.equal(migratedReview.ownerEntityId, null);
+  assert.equal(migratedReview.periodKey, "2026-08-03");
+  assert.equal(migratedReview.wins, "Finished the retrieval notes");
+  assert.equal(migratedReview.blockers, "Evaluation criteria were unclear");
+  assert.equal(migratedReview.adjustment, "Define the acceptance checks first");
+  assert.equal(migratedReview.submittedAt, WORKSPACE_NOW);
+  assert.equal(migratedReview.updatedAt, WORKSPACE_NOW);
+
+  const serializedPlans = JSON.stringify(result.payload.plans);
+  assert.equal(serializedPlans.includes('"wins"'), false);
+  assert.equal(serializedPlans.includes('"blockers"'), false);
+  assert.equal(serializedPlans.includes('"adjustment"'), false);
+  assert.equal(serializedPlans.includes("Finished the retrieval notes"), false);
+});
+
+// Production break caught: the bridge ignores a valid intermediate snapshot,
+// returns the legacy schema, or mutates the rollback snapshot while lifting it.
+test("workspace migration lifts a valid intermediate V2 snapshot into WorkspaceStateV2", () => {
+  const storage = memoryStorage({ [V2_MIGRATED_KEY]: intermediateRaw });
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+
+  assert.ok(result.payload);
+  assert.equal(result.payload.version, 2);
+  assert.deepEqual(Object.keys(result.payload).sort(), [
+    "events",
+    "learningSpaces",
+    "plans",
+    "reviews",
+    "tasks",
+    "updatedAt",
+    "version",
+  ]);
+  assert.equal(result.payload.learningSpaces.length, 1);
+  assert.equal(result.payload.learningSpaces[0].id, MIGRATED_SPACE_ID);
+  assert.deepEqual(result.payload.tasks.map((task) => task.id), ["intermediate-task-fixed"]);
+  assert.deepEqual(result.payload.reviews.map((review) => review.id), ["intermediate-review-fixed"]);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), intermediateRaw);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(result.payload));
+});
+
+// Production break caught: a second run regenerates IDs or appends duplicates.
+test("workspace migration is idempotent across repeated runs", () => {
+  const storage = memoryStorage({ [V1_DAILY_LOOP_KEY]: workspaceV1Raw });
+  const first = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  const second = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_LATER);
+
+  assert.ok(first.payload);
+  assert.ok(second.payload);
+  assert.deepEqual(workspaceEntityIds(second.payload), workspaceEntityIds(first.payload));
+  assert.deepEqual(
+    workspaceCollectionLengths(second.payload),
+    workspaceCollectionLengths(first.payload),
+  );
+});
+
+// Production break caught: recovery overwrites malformed workspace before preserving it.
+test("malformed workspace root is backed up before recovery", () => {
+  const malformedWorkspaceRaw = '{"version":2,"learningSpaces":[';
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: malformedWorkspaceRaw,
+    [V2_MIGRATED_KEY]: intermediateRaw,
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  assert.ok(result.payload);
+  assert.equal(storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY), malformedWorkspaceRaw);
+  assert.deepEqual(result.payload.tasks.map((task) => task.id), ["intermediate-task-fixed"]);
+
+  const backupWriteIndex = storage.writes.findIndex(
+    (write) => write.key === WORKSPACE_V2_CORRUPT_BACKUP_KEY,
+  );
+  const recoveredWorkspaceWriteIndex = storage.writes.findIndex(
+    (write) => write.key === WORKSPACE_V2_KEY,
+  );
+  assert.notEqual(backupWriteIndex, -1);
+  assert.notEqual(recoveredWorkspaceWriteIndex, -1);
+  assert.ok(
+    backupWriteIndex < recoveredWorkspaceWriteIndex,
+    "corrupt backup must be written before the recovered workspace",
+  );
+});
+
+// Production break caught: malformed V1 is evaluated before a valid workspace.
+test("malformed V1 data cannot overwrite a valid workspace root", () => {
+  const existingWorkspace = existingWorkspaceFixture();
+  const existingWorkspaceRaw = JSON.stringify(existingWorkspace);
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: existingWorkspaceRaw,
+    [V1_DAILY_LOOP_KEY]: JSON.stringify({ version: 1, goal: 123 }),
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  assert.deepEqual(result.payload, existingWorkspace);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), existingWorkspaceRaw);
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+  assert.equal(storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY), null);
+  assert.equal(storage.writes.some((write) => write.key === WORKSPACE_V2_KEY), false);
+});
+
+// Production break caught: lower-precedence sources replace valid workspace.
+test("source precedence selects a valid workspace before intermediate and V1 sources", () => {
+  const existingWorkspace = existingWorkspaceFixture();
+  const existingWorkspaceRaw = JSON.stringify(existingWorkspace);
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: existingWorkspaceRaw,
+    [V2_MIGRATED_KEY]: intermediateRaw,
+    [V1_DAILY_LOOP_KEY]: workspaceV1Raw,
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  assert.deepEqual(result.payload, existingWorkspace);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), existingWorkspaceRaw);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), intermediateRaw);
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+});
+
+// Production break caught: V1 is selected even when intermediate is valid.
+test("source precedence selects a valid intermediate snapshot before V1", () => {
+  const storage = memoryStorage({
+    [V2_MIGRATED_KEY]: intermediateRaw,
+    [V1_DAILY_LOOP_KEY]: workspaceV1Raw,
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  assert.ok(result.payload);
+  assert.deepEqual(result.payload.tasks.map((task) => task.id), ["intermediate-task-fixed"]);
+  assert.equal(
+    result.payload.tasks.some((task) => task.id === "legacy-task-fixed"),
+    false,
+  );
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+});
+
+// Production break caught: no-source path returns null or legacy schema.
+test("source precedence falls back to an empty V2 workspace", () => {
+  const storage = memoryStorage();
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+
+  assert.deepEqual(result.payload, {
+    version: 2,
+    learningSpaces: [],
+    plans: [],
+    tasks: [],
+    reviews: [],
+    events: [],
+    updatedAt: WORKSPACE_NOW,
+  });
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(result.payload));
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
+});
+
