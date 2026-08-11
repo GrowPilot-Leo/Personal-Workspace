@@ -5,22 +5,23 @@ import {
 } from "./daily-loop.ts";
 import {
   migrateDailyLoopV1ToV2,
+  migrateDailyLoopV1ToWorkspaceV2,
   type MigrationRecord,
   type StorageLike,
+  WORKSPACE_V2_KEY,
 } from "./migrations.ts";
+import {
+  normalizeWorkspaceStateV2,
+  type WorkspaceStateV2,
+} from "./workspace-state.ts";
 
-/**
- * Typed persistence boundary for the current local workspace.
- *
- * V3 keeps the V1 daily-loop payload as the editable source of truth while
- * the idempotent V1 -> V2 snapshot is created at the repository boundary.
- * This lets pages stop reaching into localStorage directly without silently
- * replacing the working V1 data model.
- */
+/** Typed persistence boundary for the local Workspace V2 source of truth. */
 export type WorkspaceRepository = {
+  loadWorkspace(): WorkspaceStateV2;
+  saveWorkspace(state: WorkspaceStateV2): void;
+  lastMigration(): MigrationRecord | null;
   loadDailyLoop(): DailyLoopState;
   saveDailyLoop(state: DailyLoopState): void;
-  lastMigration(): MigrationRecord | null;
 };
 
 export function createBrowserWorkspaceRepository(): WorkspaceRepository {
@@ -34,6 +35,26 @@ export function createWorkspaceRepository(storage: StorageLike): WorkspaceReposi
   let migration: MigrationRecord | null = null;
 
   return {
+    loadWorkspace() {
+      const now = new Date().toISOString();
+      try {
+        const result = migrateDailyLoopV1ToWorkspaceV2(storage, now);
+        migration = result.record;
+        return normalizeWorkspaceStateV2(result.payload, now);
+      } catch {
+        migration = null;
+        return normalizeWorkspaceStateV2(null, now);
+      }
+    },
+
+    saveWorkspace(state) {
+      const normalized = normalizeWorkspaceStateV2(
+        state,
+        new Date().toISOString(),
+      );
+      storage.setItem(WORKSPACE_V2_KEY, JSON.stringify(normalized));
+    },
+
     loadDailyLoop() {
       try {
         migration = migrateDailyLoopV1ToV2(storage).record;
