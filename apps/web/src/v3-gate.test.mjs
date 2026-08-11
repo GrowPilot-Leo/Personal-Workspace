@@ -7,6 +7,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { V1_DAILY_LOOP_KEY } from "./core/migrations.ts";
+import { createWorkspaceRepository } from "./core/persistence.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const src = (rel) => readFileSync(join(__dirname, rel), "utf8");
@@ -112,8 +114,23 @@ test("V3-006: pages use the typed persistence boundary", () => {
 });
 
 test("V3-006: migration recovery is handled at the repository boundary", () => {
-  assert.ok(persistence.includes("catch"));
-  assert.ok(persistence.includes("loadV1DailyLoop"));
+  const rawV1 = "{broken";
+  const data = new Map([[V1_DAILY_LOOP_KEY, rawV1]]);
+  const repository = createWorkspaceRepository({
+    getItem(key) {
+      return data.get(key) ?? null;
+    },
+    setItem(key, value) {
+      data.set(key, value);
+    },
+  });
+
+  const state = repository.loadDailyLoop();
+
+  assert.equal(state.goal, "");
+  assert.deepEqual(state.tasks, []);
+  assert.equal(repository.lastMigration()?.status, "failed");
+  assert.equal(data.get(V1_DAILY_LOOP_KEY), rawV1);
 });
 
 test("V3-007: browser regression suite is wired into CI", () => {
