@@ -37,14 +37,9 @@ export function createWorkspaceRepository(storage: StorageLike): WorkspaceReposi
   return {
     loadWorkspace() {
       const now = new Date().toISOString();
-      try {
-        const result = migrateDailyLoopV1ToWorkspaceV2(storage, now);
-        migration = result.record;
-        return normalizeWorkspaceStateV2(result.payload, now);
-      } catch {
-        migration = null;
-        return normalizeWorkspaceStateV2(null, now);
-      }
+      const result = migrateDailyLoopV1ToWorkspaceV2(storage, now);
+      migration = result.record;
+      return normalizeWorkspaceStateV2(result.payload, now);
     },
 
     saveWorkspace(state) {
