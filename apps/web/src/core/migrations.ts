@@ -386,6 +386,16 @@ function parseWorkspaceRoot(
     return null;
   }
 
+  if (
+    !Array.isArray(parsed.learningSpaces) &&
+    !Array.isArray(parsed.plans) &&
+    !Array.isArray(parsed.tasks) &&
+    !Array.isArray(parsed.reviews) &&
+    !Array.isArray(parsed.events)
+  ) {
+    return null;
+  }
+
   const normalized = normalizeWorkspaceStateV2(parsed, now);
   const collections: Array<[unknown, number]> = [
     [parsed.learningSpaces, normalized.learningSpaces.length],
@@ -611,6 +621,10 @@ export function migrateDailyLoopV1ToV2(
   storage: StorageLike,
   now: IsoDateTime = new Date().toISOString(),
 ): MigrationResult<MigratedDailyLoopV2> {
+  const rawWorkspaceBeforeMigration = storage.getItem(WORKSPACE_V2_KEY);
+  const hadAuthoritativeWorkspace =
+    rawWorkspaceBeforeMigration !== null &&
+    parseWorkspaceRoot(rawWorkspaceBeforeMigration, now) !== null;
   const workspaceResult = migrateDailyLoopV1ToWorkspaceV2(storage, now);
   if (workspaceResult.record.status === "failed") {
     return {
@@ -646,7 +660,7 @@ export function migrateDailyLoopV1ToV2(
 
   const parsedV1 = parseV1Raw(rawV1);
   if (!parsedV1.value) {
-    if (workspaceResult.record.status === "applied") {
+    if (hadAuthoritativeWorkspace) {
       return {
         record: workspaceResult.record,
         payload: null,
