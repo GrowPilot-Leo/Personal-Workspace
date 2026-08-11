@@ -1,232 +1,216 @@
 "use client";
 
-import Link from "next/link";
-import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  Check,
-  CheckCircle2,
-  Clock3,
-  Plus,
-  Trash2,
-} from "lucide-react";
-import {
-  createEmptyDailyLoopState,
-  createId,
-  plannedMinutes,
-  type DailyLoopState,
-} from "@/core/daily-loop";
+import { Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { createBrowserWorkspaceRepository } from "@/core/persistence";
+import type { WorkspaceRepository } from "@/core/persistence";
+import type { WorkspaceStateV2 } from "@/core/workspace-state";
+import {
+  createLearningPlanHierarchy,
+  createLearningSpace,
+  type LearningSpace,
+} from "./public";
+import {
+  LearningSpaceDialog,
+  type CreateLearningSpaceValues,
+} from "./learning-space-dialog";
+
+const statusLabels: Record<LearningSpace["status"], string> = {
+  draft: "草稿",
+  planned: "已规划",
+  active: "进行中",
+  paused: "已暂停",
+  completed: "已完成",
+  archived: "已归档",
+};
+
+const templateLabels: Record<LearningSpace["templateId"], string> = {
+  blank: "空白空间",
+  "three-horizon": "三层计划模板",
+};
+
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export function LearningModule() {
-  const [state, setState] = useState<DailyLoopState>(() => createEmptyDailyLoopState());
+  const repositoryRef = useRef<WorkspaceRepository | null>(null);
+  const [workspace, setWorkspace] = useState<WorkspaceStateV2 | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [taskTitle, setTaskTitle] = useState("");
-  const [taskMinutes, setTaskMinutes] = useState(25);
-  const [status, setStatus] = useState("");
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
 
   useEffect(() => {
-    setState(createBrowserWorkspaceRepository().loadDailyLoop());
+    const repository = createBrowserWorkspaceRepository();
+    const loadedWorkspace = repository.loadWorkspace();
+
+    repositoryRef.current = repository;
+    setWorkspace(loadedWorkspace);
+    setSelectedSpaceId(loadedWorkspace.learningSpaces[0]?.id ?? null);
     setHydrated(true);
   }, []);
 
-  useEffect(() => {
-    if (hydrated) createBrowserWorkspaceRepository().saveDailyLoop(state);
-  }, [hydrated, state]);
+  function createSpace(values: CreateLearningSpaceValues) {
+    if (!workspace || !repositoryRef.current) return;
 
-  const totalMinutes = plannedMinutes(state);
-  const pendingTasks = state.tasks.filter((task) => !task.completedAt);
-  const overBudget = totalMinutes > state.availableMinutes;
+    const now = new Date().toISOString();
+    const space = createLearningSpace({
+      name: values.name,
+      goal: values.goal,
+      templateId: values.templateId,
+      now,
+    });
+    const hierarchy = createLearningPlanHierarchy(
+      space,
+      values.templateId,
+      localDateKey(new Date()),
+      now,
+    );
+    const nextWorkspace: WorkspaceStateV2 = {
+      ...workspace,
+      learningSpaces: [...workspace.learningSpaces, hierarchy.space],
+      plans: [...workspace.plans, ...hierarchy.plans],
+      updatedAt: now,
+    };
 
-  function updateGoal(goal: string) {
-    setState((current) => ({
-      ...current,
-      goal,
-      updatedAt: new Date().toISOString(),
-    }));
+    repositoryRef.current.saveWorkspace(nextWorkspace);
+    setWorkspace(nextWorkspace);
+    setSelectedSpaceId(hierarchy.space.id);
+    setAnnouncement(`已创建学习空间：${hierarchy.space.name}`);
   }
 
-  function updateAvailableMinutes(value: number) {
-    setState((current) => ({
-      ...current,
-      availableMinutes: Math.min(480, Math.max(10, value || 10)),
-      updatedAt: new Date().toISOString(),
-    }));
+  if (!hydrated || !workspace) {
+    return (
+      <section aria-busy="true" className="page-stack">
+        <div className="panel loading-panel">正在加载学习空间…</div>
+      </section>
+    );
   }
 
-  function addTask(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const title = taskTitle.trim();
-    if (!title) return;
-
-    setState((current) => ({
-      ...current,
-      tasks: [
-        ...current.tasks,
-        {
-          id: createId(),
-          title: title.slice(0, 120),
-          durationMinutes: Math.min(480, Math.max(10, Math.round(taskMinutes))),
-          completedAt: null,
-          createdAt: new Date().toISOString(),
-        },
-      ].slice(0, 20),
-      review: null,
-      updatedAt: new Date().toISOString(),
-    }));
-    setTaskTitle("");
-    setStatus(`已加入今日：${title}`);
-  }
-
-  function removeTask(id: string, title: string) {
-    setState((current) => ({
-      ...current,
-      tasks: current.tasks.filter((task) => task.id !== id || Boolean(task.completedAt)),
-      review: null,
-      updatedAt: new Date().toISOString(),
-    }));
-    setStatus(`已从今日移除：${title}`);
-  }
-
-  if (!hydrated) {
-    return <div className="panel loading-panel">正在加载学习计划…</div>;
-  }
+  const selectedSpace =
+    workspace.learningSpaces.find((space) => space.id === selectedSpaceId) ??
+    workspace.learningSpaces[0] ??
+    null;
 
   return (
     <section className="page-stack">
       <header className="page-header">
         <div>
-          <span className="eyebrow">LEARNING PLAN · {state.activeDate}</span>
-          <h1>把学习目标拆成今天能执行的任务</h1>
-          <p>这里只负责确定目标、控制投入和拆解任务；任务执行进入“今日”，结果复盘进入“复盘中心”。</p>
+          <span className="eyebrow">LEARNING SPACES</span>
+          <h1>学习空间</h1>
+          <p>把不同学习方向分开规划，保持目标、计划和后续执行来源清晰。</p>
         </div>
-        <span className="local-badge">自动保存在当前设备</span>
+        {workspace.learningSpaces.length > 0 && (
+          <LearningSpaceDialog onCreate={createSpace} />
+        )}
       </header>
 
-      <article className="panel setup-panel">
-        <div className="panel-heading">
-          <div>
-            <span className="eyebrow">STEP 1 · PLAN</span>
-            <h2>学习目标与时间容量</h2>
+      {workspace.learningSpaces.length === 0 ? (
+        <article className="panel">
+          <div className="mx-auto flex max-w-xl flex-col items-start gap-5 py-5 sm:items-center sm:py-8 sm:text-center">
+            <div>
+              <span className="eyebrow">START SMALL</span>
+              <h2 className="mt-2 text-xl font-semibold">建立第一个学习空间</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                使用你自己的名称和目标开始；系统不会预置课程、进度或完成证明。
+              </p>
+            </div>
+            <LearningSpaceDialog onCreate={createSpace} />
           </div>
-          <span className="save-status"><Check size={14} /> 自动保存</span>
-        </div>
-        <div className="form-grid">
-          <label className="field field-wide">
-            <span>阶段目标</span>
-            <input
-              maxLength={160}
-              onChange={(event) => updateGoal(event.target.value)}
-              placeholder="例如：能够独立讲清楚并设计一个基础 RAG 方案"
-              value={state.goal}
-            />
-          </label>
-          <label className="field">
-            <span>今日可用时间（分钟）</span>
-            <input
-              max={480}
-              min={10}
-              onChange={(event) => updateAvailableMinutes(Number(event.target.value))}
-              type="number"
-              value={state.availableMinutes}
-            />
-          </label>
-        </div>
-      </article>
-
-      <article className="panel">
-        <div className="panel-heading">
-          <div>
-            <span className="eyebrow">STEP 2 · HANDOFF</span>
-            <h2>拆解并加入今日</h2>
-          </div>
-          <span className={overBudget ? "budget-badge warning" : "budget-badge"}>
-            <Clock3 size={14} /> {totalMinutes} / {state.availableMinutes} 分钟
-          </span>
-        </div>
-
-        <form className="task-form" onSubmit={addTask}>
-          <label className="field task-title-field">
-            <span>具体任务</span>
-            <input
-              maxLength={120}
-              onChange={(event) => setTaskTitle(event.target.value)}
-              placeholder="例如：用自己的话画出 RAG 检索流程"
-              value={taskTitle}
-            />
-          </label>
-          <label className="field duration-field">
-            <span>预计分钟</span>
-            <input
-              max={480}
-              min={10}
-              onChange={(event) => setTaskMinutes(Number(event.target.value) || 10)}
-              type="number"
-              value={taskMinutes}
-            />
-          </label>
-          <button className="primary-action add-task-button" type="submit">
-            <Plus size={16} /> 加入今日
-          </button>
-        </form>
-
-        {overBudget && (
-          <p className="inline-warning">计划时长已经超过今天的容量。建议缩小范围或移除优先级最低的任务。</p>
-        )}
-
-        {state.tasks.length ? (
-          <div className="editable-task-list">
-            {state.tasks.map((task) => {
-              const completed = Boolean(task.completedAt);
-              return (
-                <div className="editable-task-row" key={task.id}>
-                  <span
-                    aria-label={completed ? "已在今日完成" : "等待今日执行"}
-                    className={completed ? "complete-button done" : "complete-button"}
-                  >
-                    {completed ? <CheckCircle2 size={20} /> : <Clock3 size={18} />}
-                  </span>
-                  <div>
-                    <strong className={completed ? "completed-text" : ""}>{task.title}</strong>
-                    <small>
-                      {task.durationMinutes} 分钟 · {completed ? "已完成" : "等待今日执行"}
-                    </small>
-                  </div>
-                  {completed ? (
-                    <span className="task-status">已完成</span>
-                  ) : (
+        </article>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)]">
+          <aside aria-label="学习空间列表" className="panel self-start">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">SPACES</span>
+                <h2>学习方向</h2>
+              </div>
+              <span className="local-badge">{workspace.learningSpaces.length} 个空间</span>
+            </div>
+            <ul className="mt-5 grid gap-3">
+              {workspace.learningSpaces.map((space) => {
+                const selected = space.id === selectedSpace?.id;
+                return (
+                  <li key={space.id}>
                     <button
-                      aria-label={`从今日移除：${task.title}`}
-                      className="delete-button"
-                      onClick={() => removeTask(task.id, task.title)}
+                      aria-label={space.name}
+                      aria-pressed={selected}
+                      className={`w-full rounded-2xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        selected
+                          ? "border-primary/40 bg-primary/10"
+                          : "border-border bg-background/60 hover:bg-muted/70"
+                      }`}
+                      onClick={() => setSelectedSpaceId(space.id)}
                       type="button"
                     >
-                      <Trash2 size={17} />
+                      <span className="block font-semibold">{space.name}</span>
+                      <span className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span>{statusLabels[space.status]}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{templateLabels[space.templateId]}</span>
+                      </span>
                     </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="empty-state"><p>从一个 10～60 分钟、能够验证结果的任务开始。</p></div>
-        )}
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
 
-        <div className="mt-5 flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <strong className="text-sm">
-              {pendingTasks.length ? `${pendingTasks.length} 项等待执行` : "还没有待执行任务"}
-            </strong>
-            <p className="mt-1 text-xs text-muted-foreground" aria-live="polite">
-              {status || "任务加入后会出现在今日时间线，这里不执行也不复盘。"}
-            </p>
-          </div>
-          <Link className="primary-action shrink-0" href="/today">
-            前往今日执行 <ArrowRight size={15} aria-hidden="true" />
-          </Link>
+          {selectedSpace && (
+            <article
+              aria-labelledby="selected-learning-space-title"
+              className="calm-surface rounded-3xl p-5 sm:p-6"
+            >
+              <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <span className="eyebrow">SELECTED SPACE</span>
+                  <h2
+                    className="mt-2 break-words text-2xl font-semibold tracking-tight"
+                    id="selected-learning-space-title"
+                  >
+                    {selectedSpace.name}
+                  </h2>
+                </div>
+                <span className="local-badge self-start">
+                  {statusLabels[selectedSpace.status]}
+                </span>
+              </div>
+
+              <section aria-labelledby="learning-space-goal-title" className="py-6">
+                <h3 className="text-sm font-semibold" id="learning-space-goal-title">
+                  学习目标
+                </h3>
+                <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-muted-foreground">
+                  {selectedSpace.goal || "尚未设置学习目标"}
+                </p>
+              </section>
+
+              <dl className="grid gap-3 border-t border-border pt-5 sm:grid-cols-2">
+                <div className="rounded-2xl bg-muted/55 p-4">
+                  <dt className="text-xs font-semibold text-muted-foreground">当前状态</dt>
+                  <dd className="mt-2 text-sm font-medium">
+                    {statusLabels[selectedSpace.status]}
+                  </dd>
+                </div>
+                <div className="rounded-2xl bg-muted/55 p-4">
+                  <dt className="text-xs font-semibold text-muted-foreground">空间模板</dt>
+                  <dd className="mt-2 text-sm font-medium">
+                    {templateLabels[selectedSpace.templateId]}
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          )}
         </div>
-      </article>
+      )}
+
+      <p aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
     </section>
   );
 }
