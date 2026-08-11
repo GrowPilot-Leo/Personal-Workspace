@@ -546,7 +546,11 @@ test("V1 task migration normalizes records before building daily plan task IDs",
   assert.deepEqual(result.payload.tasks.map((task) => task.id), normalizedTaskIds);
   assert.equal(result.payload.tasks[0].title, "First valid duplicate");
   assert.ok(dailyPlan);
-  assert.deepEqual(dailyPlan.data.taskIds, normalizedTaskIds);
+  const activeDailyPlanVersion = dailyPlan.versions.find(
+    (version) => version.version === dailyPlan.activeVersion,
+  );
+  assert.ok(activeDailyPlanVersion);
+  assert.deepEqual(activeDailyPlanVersion.data.taskIds, normalizedTaskIds);
   assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(result.payload));
 });
 
