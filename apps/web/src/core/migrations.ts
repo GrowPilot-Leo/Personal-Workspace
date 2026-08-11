@@ -649,6 +649,14 @@ export function migrateDailyLoopV1ToV2(
     }
   }
 
+  if (hadAuthoritativeWorkspace) {
+    return {
+      record: workspaceResult.record,
+      payload: null,
+      backupKey: null,
+    };
+  }
+
   const rawV1 = storage.getItem(V1_DAILY_LOOP_KEY);
   if (rawV1 === null || !workspaceResult.payload) {
     return {
@@ -660,14 +668,6 @@ export function migrateDailyLoopV1ToV2(
 
   const parsedV1 = parseV1Raw(rawV1);
   if (!parsedV1.value) {
-    if (hadAuthoritativeWorkspace) {
-      return {
-        record: workspaceResult.record,
-        payload: null,
-        backupKey: workspaceResult.backupKey,
-      };
-    }
-
     return {
       record: migrationRecord(storage, "failed", now, parsedV1.error),
       payload: null,
