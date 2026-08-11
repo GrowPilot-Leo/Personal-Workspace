@@ -639,3 +639,56 @@ test("no-source workspace migration stays skipped with one stable record", () =>
   assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
   assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
 });
+
+// Production break caught: a parseable V2 shell with no usable collections is
+// promoted to an authoritative empty workspace instead of yielding to recovery.
+test("all-unusable workspace collections fall through to a valid intermediate snapshot", () => {
+  const unusableWorkspaceRaw = JSON.stringify({
+    version: 2,
+    learningSpaces: null,
+    plans: {},
+    tasks: "invalid",
+    reviews: 0,
+    events: false,
+    updatedAt: "2026-08-10T08:00:00Z",
+  });
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: unusableWorkspaceRaw,
+    [V2_MIGRATED_KEY]: intermediateRaw,
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+
+  assert.equal(storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY), unusableWorkspaceRaw);
+  assert.ok(result.payload);
+  assert.deepEqual(result.payload.tasks.map((task) => task.id), [
+    "intermediate-task-fixed",
+  ]);
+  assert.deepEqual(result.payload.reviews.map((review) => review.id), [
+    "intermediate-review-fixed",
+  ]);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), intermediateRaw);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(result.payload));
+});
+
+// Production break caught: the compatibility wrapper treats malformed stale V1
+// as authoritative after a skipped empty workspace was already established.
+test("pre-existing skipped empty workspace remains authoritative over later malformed V1", () => {
+  const storage = memoryStorage();
+  const first = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  const emptyWorkspaceRaw = storage.getItem(WORKSPACE_V2_KEY);
+  const malformedV1Raw = JSON.stringify({ version: 1, goal: 123 });
+  storage.setItem(V1_DAILY_LOOP_KEY, malformedV1Raw);
+
+  const second = migrateDailyLoopV1ToV2(storage, WORKSPACE_LATER);
+  const log = JSON.parse(storage.getItem(MIGRATION_LOG_KEY));
+
+  assert.equal(first.record.status, "skipped");
+  assert.equal(second.record.status, "skipped");
+  assert.deepEqual(second.record, first.record);
+  assert.equal(second.payload, null);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), emptyWorkspaceRaw);
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
+  assert.deepEqual(log, [first.record]);
+});
