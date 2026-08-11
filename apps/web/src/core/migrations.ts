@@ -404,6 +404,16 @@ function parseWorkspaceRoot(
     [parsed.reviews, normalized.reviews.length],
     [parsed.events, normalized.events.length],
   ];
+  const hasValidEntity = collections.some(
+    ([, normalizedLength]) => normalizedLength > 0,
+  );
+  const hasTrulyEmptyCollections = collections.every(
+    ([source]) => Array.isArray(source) && source.length === 0,
+  );
+  if (!hasValidEntity && !hasTrulyEmptyCollections) {
+    return null;
+  }
+
   const needsRepair =
     !isIsoDateTime(parsed.updatedAt) ||
     normalized.updatedAt !== parsed.updatedAt ||

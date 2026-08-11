@@ -51,12 +51,7 @@ export function createWorkspaceRepository(storage: StorageLike): WorkspaceReposi
     },
 
     loadDailyLoop() {
-      try {
-        migration = migrateDailyLoopV1ToV2(storage).record;
-      } catch {
-        // A malformed migration must not blank the existing V1 experience.
-        migration = null;
-      }
+      migration = migrateDailyLoopV1ToV2(storage).record;
       return loadV1DailyLoop(storage);
     },
 
