@@ -265,15 +265,27 @@ export function createLearningPlanHierarchy(
 }
 
 export function reviseLearningPlan(
+  space: LearningSpace,
   plan: Plan<LearningPlanData>,
   patch: Partial<LearningPlanData>,
   reason: string,
   now: IsoDateTime,
 ): Plan<LearningPlanData> {
+  assertSpaceEditable(space);
+
+  const currentData = activePlanData(plan);
+  if (
+    plan.ownerModuleId !== "learning" ||
+    plan.ownerEntityId !== space.id ||
+    currentData.learningSpaceId !== space.id
+  ) {
+    throw new Error("Learning plan must belong to the learning space");
+  }
+
   return revisePlan(
     plan,
     {
-      ...activePlanData(plan),
+      ...currentData,
       ...patch,
     },
     reason,
@@ -316,6 +328,7 @@ export function scheduleLearningTask(
   return {
     task,
     plan: reviseLearningPlan(
+      space,
       dailyPlan,
       { taskIds: [...dailyData.taskIds, task.id] },
       "task-scheduled",
