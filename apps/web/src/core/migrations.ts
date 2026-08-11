@@ -476,14 +476,11 @@ export function migrateDailyLoopV1ToWorkspaceV2(
   if (rawV1 !== null) {
     const parsedV1 = parseV1Raw(rawV1);
     if (!parsedV1.value) {
+      const empty = createEmptyWorkspaceStateV2(now);
+      storage.setItem(WORKSPACE_V2_KEY, JSON.stringify(empty));
       return {
-        record: migrationRecord(
-          storage,
-          "failed",
-          now,
-          parsedV1.error,
-        ),
-        payload: null,
+        record: migrationRecord(storage, "skipped", now),
+        payload: empty,
         backupKey: corruptBackupKey,
       };
     }
@@ -595,7 +592,7 @@ export function migrateDailyLoopV1ToV2(
   const parsedV1 = parseV1Raw(rawV1);
   if (!parsedV1.value) {
     return {
-      record: workspaceResult.record,
+      record: migrationRecord(storage, "failed", now, parsedV1.error),
       payload: null,
       backupKey: null,
     };
