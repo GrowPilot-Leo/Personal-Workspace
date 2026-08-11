@@ -692,3 +692,24 @@ test("pre-existing skipped empty workspace remains authoritative over later malf
   assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
   assert.deepEqual(log, [first.record]);
 });
+
+// Production break caught: the compatibility wrapper synthesizes a new rollback
+// snapshot from lower-precedence V1 after an authoritative workspace already won.
+test("authoritative workspace prevents synthesis of a rollback snapshot from stale V1", () => {
+  const authoritativeWorkspace = existingWorkspaceFixture();
+  const authoritativeWorkspaceRaw = JSON.stringify(authoritativeWorkspace);
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: authoritativeWorkspaceRaw,
+    [V1_DAILY_LOOP_KEY]: workspaceV1Raw,
+  });
+
+  const result = migrateDailyLoopV1ToV2(storage, WORKSPACE_NOW);
+
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), authoritativeWorkspaceRaw);
+  assert.equal(result.record.status, "applied");
+  assert.equal(result.record.error, null);
+  assert.equal(result.payload, null);
+  assert.equal(result.backupKey, null);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+});
