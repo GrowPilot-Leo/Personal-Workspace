@@ -451,3 +451,187 @@ test("source precedence falls back to an empty V2 workspace", () => {
   assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
   assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
 });
+
+// Production break caught: one malformed collection makes a recoverable
+// workspace lose precedence and allows an older intermediate or V1 source to win.
+test("recoverable workspace corruption is normalized before lower-precedence sources", () => {
+  const recoverableWorkspace = {
+    ...existingWorkspaceFixture(),
+    tasks: [
+      {
+        id: "recoverable-workspace-task",
+        ownerModuleId: "learning",
+        ownerEntityId: "existing-workspace-space",
+        title: "Keep the valid workspace task",
+        description: "",
+        durationMinutes: 25,
+        scheduledDate: "2026-08-09",
+        status: "planned",
+        dueAt: null,
+        completedAt: null,
+        createdAt: "2026-08-09T08:00:00Z",
+        updatedAt: "2026-08-09T08:00:00Z",
+      },
+    ],
+    reviews: null,
+  };
+  const recoverableWorkspaceRaw = JSON.stringify(recoverableWorkspace);
+  const expectedWorkspace = { ...recoverableWorkspace, reviews: [] };
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: recoverableWorkspaceRaw,
+    [V2_MIGRATED_KEY]: intermediateRaw,
+    [V1_DAILY_LOOP_KEY]: workspaceV1Raw,
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+
+  assert.equal(storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY), recoverableWorkspaceRaw);
+  assert.deepEqual(result.payload, expectedWorkspace);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(expectedWorkspace));
+  assert.deepEqual(result.payload.learningSpaces, recoverableWorkspace.learningSpaces);
+  assert.deepEqual(result.payload.tasks, recoverableWorkspace.tasks);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), intermediateRaw);
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+});
+
+const duplicateAndInvalidV1Raw = JSON.stringify({
+  version: 1,
+  activeDate: "2026-08-04",
+  goal: "Normalize migrated tasks",
+  availableMinutes: 60,
+  tasks: [
+    {
+      id: "duplicate-task",
+      title: "First valid duplicate",
+      durationMinutes: 20,
+      completedAt: null,
+      createdAt: "2026-08-03T08:00:00Z",
+    },
+    {
+      id: "duplicate-task",
+      title: "Second duplicate",
+      durationMinutes: 25,
+      completedAt: null,
+      createdAt: "2026-08-03T09:00:00Z",
+    },
+    {
+      id: "nested-invalid-task",
+      title: "Invalid completion timestamp",
+      durationMinutes: 10,
+      completedAt: "not-an-iso-timestamp",
+      createdAt: "2026-08-03T10:00:00Z",
+    },
+    {
+      id: "unique-task",
+      title: "Keep the unique task",
+      durationMinutes: 15,
+      completedAt: null,
+      createdAt: "2026-08-03T11:00:00Z",
+    },
+  ],
+  review: null,
+});
+
+// Production break caught: V1 tasks bypass workspace normalization, retaining
+// duplicate IDs or nested-invalid timestamps and leaving stale daily plan task IDs.
+test("V1 task migration normalizes records before building daily plan task IDs", () => {
+  const storage = memoryStorage({ [V1_DAILY_LOOP_KEY]: duplicateAndInvalidV1Raw });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  const normalizedTaskIds = ["duplicate-task", "unique-task"];
+  const dailyPlan = result.payload.plans.find(
+    (plan) => plan.id === "learning-plan-v1-daily-2026-08-04",
+  );
+
+  assert.deepEqual(result.payload.tasks.map((task) => task.id), normalizedTaskIds);
+  assert.equal(result.payload.tasks[0].title, "First valid duplicate");
+  assert.ok(dailyPlan);
+  assert.deepEqual(dailyPlan.data.taskIds, normalizedTaskIds);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(result.payload));
+});
+
+// Production break caught: the first V1 conversion writes a workspace that the
+// bridge rejects as corrupt on its own next run, regenerating or dropping entities.
+test("normalized V1 workspace remains valid and stable on a repeated migration", () => {
+  const storage = memoryStorage({ [V1_DAILY_LOOP_KEY]: duplicateAndInvalidV1Raw });
+
+  const first = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  const second = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_LATER);
+
+  assert.equal(storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY), null);
+  assert.deepEqual(workspaceEntityIds(second.payload), workspaceEntityIds(first.payload));
+  assert.deepEqual(
+    workspaceCollectionLengths(second.payload),
+    workspaceCollectionLengths(first.payload),
+  );
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(first.payload));
+});
+
+// Production break caught: a stale corrupt-workspace backup is retained instead
+// of being refreshed with the exact bytes from the workspace currently recovered.
+test("new corrupt workspace refreshes an existing backup before recovery writes", () => {
+  const currentCorruptRaw = '{"version":2,"learningSpaces":[';
+  const olderCorruptRaw = '{"version":2,"olderCorruption":true}';
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: currentCorruptRaw,
+    [WORKSPACE_V2_CORRUPT_BACKUP_KEY]: olderCorruptRaw,
+    [V2_MIGRATED_KEY]: intermediateRaw,
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+
+  assert.ok(result.payload);
+  assert.equal(storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY), currentCorruptRaw);
+  const backupWriteIndex = storage.writes.findIndex(
+    (write) => write.key === WORKSPACE_V2_CORRUPT_BACKUP_KEY,
+  );
+  const recoveredWorkspaceWriteIndex = storage.writes.findIndex(
+    (write) => write.key === WORKSPACE_V2_KEY,
+  );
+  assert.notEqual(backupWriteIndex, -1);
+  assert.notEqual(recoveredWorkspaceWriteIndex, -1);
+  assert.ok(backupWriteIndex < recoveredWorkspaceWriteIndex);
+});
+
+// Production break caught: the compatibility wrapper validates stale malformed
+// V1 after the authoritative workspace wins and downgrades an applied migration.
+test("compatibility migration preserves an authoritative workspace despite malformed stale V1", () => {
+  const authoritativeWorkspace = existingWorkspaceFixture();
+  const authoritativeWorkspaceRaw = JSON.stringify(authoritativeWorkspace);
+  const malformedV1Raw = JSON.stringify({ version: 1, goal: 123 });
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: authoritativeWorkspaceRaw,
+    [V1_DAILY_LOOP_KEY]: malformedV1Raw,
+  });
+
+  const result = migrateDailyLoopV1ToV2(storage, WORKSPACE_NOW);
+
+  assert.equal(result.record.status, "applied");
+  assert.equal(result.record.error, null);
+  assert.equal(result.payload, null);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), authoritativeWorkspaceRaw);
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
+  assert.equal(storage.writes.some((write) => write.key === WORKSPACE_V2_KEY), false);
+  assert.deepEqual(JSON.parse(storage.getItem(MIGRATION_LOG_KEY)), [result.record]);
+});
+
+// Production break caught: a valid empty workspace created by the no-source path
+// changes the stable migration record from skipped to applied on the second run.
+test("no-source workspace migration stays skipped with one stable record", () => {
+  const storage = memoryStorage();
+
+  const first = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  const second = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_LATER);
+  const log = JSON.parse(storage.getItem(MIGRATION_LOG_KEY));
+
+  assert.equal(first.record.status, "skipped");
+  assert.equal(second.record.status, "skipped");
+  assert.deepEqual(second.record, first.record);
+  assert.deepEqual(second.payload, first.payload);
+  assert.equal(log.length, 1);
+  assert.deepEqual(log[0], first.record);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(first.payload));
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
+});
