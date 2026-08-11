@@ -319,8 +319,10 @@ test("removing one confirmed bundle preserves every unrelated workspace record",
 });
 
 test("direct learning-plan edits append a version without mutating prior data", () => {
+  const space = makeSpace();
   const plan = makePlan();
   const revised = reviseLearningPlan(
+    space,
     plan,
     { goal: "完成首轮人工评测", capacityMinutes: 90 },
     "user-edit",
@@ -338,6 +340,27 @@ test("direct learning-plan edits append a version without mutating prior data", 
   assert.equal(activePlanData(revised).goal, "完成首轮人工评测");
   assert.equal(activePlanData(revised).capacityMinutes, 90);
   assert.equal(activePlanData(revised).title, "今日任务");
+});
+
+test("reviseLearningPlan rejects plan edits when the owning space is archived", () => {
+  const archived = makeSpace({ status: "archived" });
+  const plan = makePlan();
+
+  assert.throws(
+    () =>
+      reviseLearningPlan(
+        archived,
+        plan,
+        { goal: "不应修改归档计划" },
+        "user-edit",
+        UPDATED_AT,
+      ),
+    /Archived learning spaces are read-only/,
+  );
+
+  assert.equal(plan.activeVersion, 1);
+  assert.equal(plan.versions.length, 1);
+  assert.equal(activePlanData(plan).goal, "");
 });
 
 test("Today summaries include only matching learning tasks and expose source-space identity", () => {
