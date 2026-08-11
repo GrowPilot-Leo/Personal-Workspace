@@ -183,6 +183,31 @@ function migrationRecord(
   return record;
 }
 
+function migrationRecordForExistingWorkspace(
+  storage: StorageLike,
+  workspace: WorkspaceStateV2,
+  now: IsoDateTime,
+): MigrationRecord {
+  const isEmpty =
+    workspace.learningSpaces.length === 0 &&
+    workspace.plans.length === 0 &&
+    workspace.tasks.length === 0 &&
+    workspace.reviews.length === 0 &&
+    workspace.events.length === 0;
+  const existing = loadMigrationLog(storage).find(
+    (record) => record.migrationKey === MIGRATION_KEY,
+  );
+
+  if (
+    isEmpty &&
+    (existing?.status === "skipped" || existing?.status === "failed")
+  ) {
+    return existing;
+  }
+
+  return migrationRecord(storage, "applied", now);
+}
+
 function migratedPlans(
   goal: string,
   activeDate: string,
@@ -297,7 +322,7 @@ function workspaceFromV1(
   value: V1DailyLoop,
   now: IsoDateTime,
 ): WorkspaceStateV2 {
-  const tasks = value.tasks
+  const taskCandidates = value.tasks
     .map((task, index) =>
       normalizeV1Task(
         task,
@@ -308,27 +333,48 @@ function workspaceFromV1(
     )
     .filter((task): task is Task => task !== null);
 
-  return {
-    version: 2,
-    learningSpaces: [migratedSpace(value.goal, now)],
-    plans: migratedPlans(
-      value.goal,
-      value.activeDate,
-      tasks.map((task) => task.id),
-      value.availableMinutes,
-      now,
-    ),
-    tasks,
-    reviews: migratedV1Reviews(value.review, value.activeDate, now),
-    events: [],
-    updatedAt: now,
-  };
+  const tasks = normalizeWorkspaceStateV2(
+    {
+      version: 2,
+      learningSpaces: [],
+      plans: [],
+      tasks: taskCandidates,
+      reviews: [],
+      events: [],
+      updatedAt: now,
+    },
+    now,
+  ).tasks;
+
+  return normalizeWorkspaceStateV2(
+    {
+      version: 2,
+      learningSpaces: [migratedSpace(value.goal, now)],
+      plans: migratedPlans(
+        value.goal,
+        value.activeDate,
+        tasks.map((task) => task.id),
+        value.availableMinutes,
+        now,
+      ),
+      tasks,
+      reviews: migratedV1Reviews(value.review, value.activeDate, now),
+      events: [],
+      updatedAt: now,
+    },
+    now,
+  );
 }
 
-function parseValidWorkspace(
+type ParsedWorkspaceRoot = {
+  workspace: WorkspaceStateV2;
+  needsRepair: boolean;
+};
+
+function parseWorkspaceRoot(
   raw: string,
   now: IsoDateTime,
-): WorkspaceStateV2 | null {
+): ParsedWorkspaceRoot | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -336,32 +382,27 @@ function parseValidWorkspace(
     return null;
   }
 
-  if (
-    !isRecord(parsed) ||
-    parsed.version !== 2 ||
-    !Array.isArray(parsed.learningSpaces) ||
-    !Array.isArray(parsed.plans) ||
-    !Array.isArray(parsed.tasks) ||
-    !Array.isArray(parsed.reviews) ||
-    !Array.isArray(parsed.events) ||
-    !isIsoDateTime(parsed.updatedAt)
-  ) {
+  if (!isRecord(parsed) || parsed.version !== 2) {
     return null;
   }
 
   const normalized = normalizeWorkspaceStateV2(parsed, now);
-  if (
-    normalized.learningSpaces.length !== parsed.learningSpaces.length ||
-    normalized.plans.length !== parsed.plans.length ||
-    normalized.tasks.length !== parsed.tasks.length ||
-    normalized.reviews.length !== parsed.reviews.length ||
-    normalized.events.length !== parsed.events.length ||
-    normalized.updatedAt !== parsed.updatedAt
-  ) {
-    return null;
-  }
+  const collections: Array<[unknown, number]> = [
+    [parsed.learningSpaces, normalized.learningSpaces.length],
+    [parsed.plans, normalized.plans.length],
+    [parsed.tasks, normalized.tasks.length],
+    [parsed.reviews, normalized.reviews.length],
+    [parsed.events, normalized.events.length],
+  ];
+  const needsRepair =
+    !isIsoDateTime(parsed.updatedAt) ||
+    normalized.updatedAt !== parsed.updatedAt ||
+    collections.some(
+      ([source, normalizedLength]) =>
+        !Array.isArray(source) || source.length !== normalizedLength,
+    );
 
-  return normalized;
+  return { workspace: normalized, needsRepair };
 }
 
 function parseIntermediate(raw: string): MigratedDailyLoopV2 | null {
@@ -441,19 +482,33 @@ export function migrateDailyLoopV1ToWorkspaceV2(
   let corruptBackupKey: string | null = null;
 
   if (rawWorkspace !== null) {
-    const validWorkspace = parseValidWorkspace(rawWorkspace, now);
-    if (validWorkspace) {
+    const parsedWorkspace = parseWorkspaceRoot(rawWorkspace, now);
+    if (parsedWorkspace && !parsedWorkspace.needsRepair) {
       return {
-        record: migrationRecord(storage, "applied", now),
-        payload: validWorkspace,
+        record: migrationRecordForExistingWorkspace(
+          storage,
+          parsedWorkspace.workspace,
+          now,
+        ),
+        payload: parsedWorkspace.workspace,
         backupKey: null,
       };
     }
 
-    if (storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY) === null) {
-      storage.setItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY, rawWorkspace);
-    }
+    storage.setItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY, rawWorkspace);
     corruptBackupKey = WORKSPACE_V2_CORRUPT_BACKUP_KEY;
+
+    if (parsedWorkspace) {
+      storage.setItem(
+        WORKSPACE_V2_KEY,
+        JSON.stringify(parsedWorkspace.workspace),
+      );
+      return {
+        record: migrationRecord(storage, "applied", now),
+        payload: parsedWorkspace.workspace,
+        backupKey: corruptBackupKey,
+      };
+    }
   }
 
   const rawIntermediate = storage.getItem(V2_MIGRATED_KEY);
@@ -591,6 +646,14 @@ export function migrateDailyLoopV1ToV2(
 
   const parsedV1 = parseV1Raw(rawV1);
   if (!parsedV1.value) {
+    if (workspaceResult.record.status === "applied") {
+      return {
+        record: workspaceResult.record,
+        payload: null,
+        backupKey: workspaceResult.backupKey,
+      };
+    }
+
     return {
       record: migrationRecord(storage, "failed", now, parsedV1.error),
       payload: null,
