@@ -403,6 +403,36 @@ test("source precedence selects a valid intermediate snapshot before V1", () => 
   assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
 });
 
+// Production break caught: malformed V1 stops precedence before the empty-root fallback.
+test("malformed V1 falls back to an empty V2 workspace", () => {
+  const storage = memoryStorage({
+    [V1_DAILY_LOOP_KEY]: JSON.stringify({ version: 1, goal: 123 }),
+  });
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+  const expectedWorkspace = {
+    version: 2,
+    learningSpaces: [],
+    plans: [],
+    tasks: [],
+    reviews: [],
+    events: [],
+    updatedAt: WORKSPACE_NOW,
+  };
+
+  assert.deepEqual(
+    {
+      payload: result.payload,
+      storedWorkspace: storage.getItem(WORKSPACE_V2_KEY),
+    },
+    {
+      payload: expectedWorkspace,
+      storedWorkspace: JSON.stringify(expectedWorkspace),
+    },
+  );
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
+});
+
 // Production break caught: no-source path returns null or legacy schema.
 test("source precedence falls back to an empty V2 workspace", () => {
   const storage = memoryStorage();
@@ -421,4 +451,3 @@ test("source precedence falls back to an empty V2 workspace", () => {
   assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
   assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
 });
-
