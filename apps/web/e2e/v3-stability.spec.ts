@@ -117,19 +117,32 @@ test("calm day theme is the default and themes persist on refresh", async ({ pag
   await expect(page.locator("html")).toHaveAttribute("data-theme", "day");
 });
 
-test("learning only plans tasks and hands execution to Today", async ({ page }) => {
-  await page.goto("/learning");
+test("configurable learning space is created and persists on reload", async ({ page }) => {
+  const context = page.context();
+  await page.close();
+  const learningPage = await context.newPage();
+  const goal = "建立一套可复用的 AI 产品评测方法";
 
-  await page.getByLabel("阶段目标").fill("完成知识库信息架构");
-  await page.getByLabel("具体任务").fill("画出知识流转图");
-  await page.getByRole("button", { name: "加入今日" }).click();
+  await learningPage.goto("/learning");
+  await learningPage.getByRole("button", { name: "新建学习空间" }).click();
 
-  await expect(page.locator('[aria-live="polite"]')).toContainText("已加入今日：画出知识流转图");
-  await expect(page.getByRole("button", { name: "保存复盘" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "归档并开始下一天" })).toHaveCount(0);
+  const dialog = learningPage.getByRole("dialog", { name: "新建学习空间" });
+  await dialog.getByRole("radio", { name: "三层计划模板" }).check();
+  await dialog.getByLabel("空间名称").fill("AI 产品评测");
+  await dialog.getByLabel("学习目标").fill(goal);
+  await dialog.getByRole("button", { name: "创建学习空间" }).click();
 
-  await page.getByRole("link", { name: "前往今日执行" }).click();
-  await expect(page.getByRole("list", { name: "今日时间线" })).toContainText("画出知识流转图");
+  await expect(learningPage).toHaveURL(/\/learning$/);
+  await expect(learningPage.getByRole("button", { name: "AI 产品评测" })).toBeVisible();
+  await expect(learningPage.getByRole("heading", { name: "AI 产品评测" })).toBeVisible();
+  await expect(learningPage.getByText(goal, { exact: true })).toBeVisible();
+
+  await learningPage.reload();
+
+  await expect(learningPage).toHaveURL(/\/learning$/);
+  await expect(learningPage.getByRole("button", { name: "AI 产品评测" })).toBeVisible();
+  await expect(learningPage.getByRole("heading", { name: "AI 产品评测" })).toBeVisible();
+  await expect(learningPage.getByText(goal, { exact: true })).toBeVisible();
 });
 
 test("today starts the next real task and can complete it inline", async ({ page }) => {
