@@ -257,6 +257,29 @@ test("legacy adapters remain callable without overwriting Workspace V2 source of
   assert.equal(repository.loadDailyLoop().goal, "仅修改回滚适配器");
 });
 
+// Mutation caught: legacy loading hides a failed authoritative V2 write and
+// returns V1 data as though migration succeeded.
+test("legacy load propagates Workspace V2 write failures", () => {
+  const backing = memoryStorage({ [V1_DAILY_LOOP_KEY]: v1Fixture });
+  const storage = {
+    getItem: backing.getItem,
+    setItem(key, value) {
+      if (key === WORKSPACE_V2_KEY) {
+        throw new Error("workspace V2 write failed");
+      }
+      backing.setItem(key, value);
+    },
+  };
+  const repository = createWorkspaceRepository(storage);
+
+  assert.throws(() => repository.loadDailyLoop(), {
+    name: "Error",
+    message: "workspace V2 write failed",
+  });
+  assert.equal(storage.getItem(V1_DAILY_LOOP_KEY), v1Fixture);
+  assert.equal(repository.lastMigration(), null);
+});
+
 test("repository runs migration at the read boundary and returns the V1 editing model", () => {
   const storage = memoryStorage({ [V1_DAILY_LOOP_KEY]: v1Fixture });
   const repository = createWorkspaceRepository(storage);

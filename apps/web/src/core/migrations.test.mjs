@@ -640,6 +640,66 @@ test("no-source workspace migration stays skipped with one stable record", () =>
   assert.equal(storage.getItem(V2_MIGRATED_KEY), null);
 });
 
+// Production break caught: arrays containing only invalid entities are treated
+// as recoverable and promoted to an authoritative empty workspace.
+test("all-invalid workspace entity arrays fall through to a valid intermediate snapshot", () => {
+  const invalidWorkspaceRaw = JSON.stringify({
+    version: 2,
+    learningSpaces: [{ id: "invalid-space" }],
+    plans: [{ id: "invalid-plan" }],
+    tasks: [{ id: "invalid-task" }],
+    reviews: [{ id: "invalid-review" }],
+    events: [{ eventId: "invalid-event" }],
+    updatedAt: "2026-08-10T08:00:00Z",
+  });
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: invalidWorkspaceRaw,
+    [V2_MIGRATED_KEY]: intermediateRaw,
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+
+  assert.equal(storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY), invalidWorkspaceRaw);
+  assert.deepEqual(result.payload.tasks.map((task) => task.id), [
+    "intermediate-task-fixed",
+  ]);
+  assert.deepEqual(result.payload.reviews.map((review) => review.id), [
+    "intermediate-review-fixed",
+  ]);
+  assert.equal(storage.getItem(V2_MIGRATED_KEY), intermediateRaw);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(result.payload));
+});
+
+// Production break caught: a legitimate empty workspace is mistaken for an
+// unusable shell and lower-precedence V1 data becomes authoritative.
+test("valid empty workspace remains authoritative over valid V1", () => {
+  const emptyWorkspace = {
+    version: 2,
+    learningSpaces: [],
+    plans: [],
+    tasks: [],
+    reviews: [],
+    events: [],
+    updatedAt: "2026-08-10T08:00:00Z",
+  };
+  const emptyWorkspaceRaw = JSON.stringify(emptyWorkspace);
+  const storage = memoryStorage({
+    [WORKSPACE_V2_KEY]: emptyWorkspaceRaw,
+    [V1_DAILY_LOOP_KEY]: workspaceV1Raw,
+  });
+
+  const result = migrateDailyLoopV1ToWorkspaceV2(storage, WORKSPACE_NOW);
+
+  assert.deepEqual(result.payload, emptyWorkspace);
+  assert.equal(storage.getItem(WORKSPACE_V2_KEY), emptyWorkspaceRaw);
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
+  assert.equal(storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY), null);
+  assert.equal(
+    storage.writes.some((write) => write.key === WORKSPACE_V2_KEY),
+    false,
+  );
+});
+
 // Production break caught: a parseable V2 shell with no usable collections is
 // promoted to an authoritative empty workspace instead of yielding to recovery.
 test("all-unusable workspace collections fall through to a valid intermediate snapshot", () => {
