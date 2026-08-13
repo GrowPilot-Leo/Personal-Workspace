@@ -1,7 +1,9 @@
-import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const DAILY_LOOP_KEY = "growpilot.daily-loop.v1";
+const WORKSPACE_V2_KEY = "growpilot.workspace.v2";
 
 const emptyDailyLoop = JSON.stringify({
   version: 1,
@@ -39,6 +41,19 @@ test.beforeEach(async ({ page }) => {
     { key: DAILY_LOOP_KEY, value: emptyDailyLoop },
   );
 });
+
+async function createLearningSpace(
+  page: Page,
+  name: string,
+  goal = "",
+) {
+  await page.getByRole("button", { name: "新建学习空间" }).click();
+  const dialog = page.getByRole("dialog", { name: "新建学习空间" });
+  await dialog.getByRole("radio", { name: "三层计划模板" }).check();
+  await dialog.getByLabel("空间名称").fill(name);
+  await dialog.getByLabel("学习目标").fill(goal);
+  await dialog.getByRole("button", { name: "创建学习空间" }).click();
+}
 
 test("core routes load without browser errors", async ({ page }) => {
   const errors: string[] = [];
@@ -143,6 +158,126 @@ test("configurable learning space is created and persists on reload", async ({ p
   await expect(learningPage.getByRole("button", { name: "AI 产品评测" })).toBeVisible();
   await expect(learningPage.getByRole("heading", { name: "AI 产品评测" })).toBeVisible();
   await expect(learningPage.getByText(goal, { exact: true })).toBeVisible();
+});
+
+test("configurable learning space plans tasks and enforces lifecycle", async ({ page }) => {
+  await page.goto("/learning");
+  await createLearningSpace(page, "AI 产品评测", "建立可复用的评测方法");
+
+  await page.getByLabel("月度目标").fill("完成评测框架");
+  await page.getByRole("button", { name: "保存月度目标" }).click();
+  await page.getByLabel("本周目标").fill("验证三种评测方法");
+  await page.getByRole("button", { name: "保存本周目标" }).click();
+  await page.getByRole("button", { name: "开始学习" }).click();
+
+  const scheduledDate = await page.evaluate(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
+  await page.getByLabel("任务标题").fill("整理评测维度");
+  await page.getByLabel("预计分钟").fill("45");
+  await expect(page.getByLabel("计划日期")).toHaveValue(scheduledDate);
+  await page.getByRole("button", { name: "添加每日任务" }).click();
+  await expect(page.getByText("整理评测维度", { exact: true })).toBeVisible();
+
+  const stored = await page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  }, WORKSPACE_V2_KEY);
+  const space = stored.learningSpaces.find(
+    (candidate: { name: string }) => candidate.name === "AI 产品评测",
+  );
+  const ownedPlans = stored.plans.filter(
+    (plan: { ownerEntityId: string }) => plan.ownerEntityId === space.id,
+  );
+  const monthly = ownedPlans.find(
+    (plan: { horizon: string }) => plan.horizon === "monthly",
+  );
+  const weekly = ownedPlans.find(
+    (plan: { horizon: string }) => plan.horizon === "weekly",
+  );
+  const daily = ownedPlans.find(
+    (plan: { horizon: string }) => plan.horizon === "daily",
+  );
+  const task = stored.tasks.find(
+    (candidate: { title: string }) => candidate.title === "整理评测维度",
+  );
+
+  expect(space.status).toBe("active");
+  expect(monthly.versions.at(-1).reason).toBe("user-edit");
+  expect(monthly.versions.at(-1).data.goal).toBe("完成评测框架");
+  expect(weekly.versions.at(-1).reason).toBe("user-edit");
+  expect(weekly.versions.at(-1).data.goal).toBe("验证三种评测方法");
+  expect(task).toMatchObject({
+    ownerModuleId: "learning",
+    ownerEntityId: space.id,
+    durationMinutes: 45,
+    scheduledDate,
+  });
+  expect(daily.versions.at(-1).data.taskIds).toContain(task.id);
+
+  await page.getByRole("button", { name: "暂停空间" }).click();
+  await expect(page.getByRole("button", { name: "添加每日任务" })).toBeDisabled();
+  await page.getByRole("button", { name: "继续学习" }).click();
+  await expect(page.getByRole("button", { name: "暂停空间" })).toBeVisible();
+  await page.getByRole("button", { name: "归档空间" }).click();
+
+  await expect(page.getByText("已归档", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "保存月度目标" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "添加每日任务" })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByText("已归档", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("整理评测维度", { exact: true })).toBeVisible();
+});
+
+test("configurable learning space exports and deletes only the confirmed bundle", async ({ page }) => {
+  await page.goto("/learning");
+  await createLearningSpace(page, "RAG Lab", "验证检索质量");
+  await createLearningSpace(page, "Keep Space", "保留的数据");
+  await page.getByRole("button", { name: "RAG Lab" }).click();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "导出空间" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(
+    /^growpilot-learning-rag-lab-\d{4}-\d{2}-\d{2}\.json$/,
+  );
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const exported = JSON.parse(await readFile(downloadPath!, "utf8"));
+  expect(exported.space.name).toBe("RAG Lab");
+  expect(exported.plans).toHaveLength(3);
+  expect(exported.plans.every(
+    (plan: { ownerEntityId: string }) => plan.ownerEntityId === exported.space.id,
+  )).toBe(true);
+
+  await page.getByRole("button", { name: "删除空间" }).click();
+  const dialog = page.getByRole("dialog", { name: "删除学习空间" });
+  await expect(dialog.getByRole("button", { name: "先导出" })).toBeVisible();
+  const confirmDelete = dialog.getByRole("button", { name: "确认删除" });
+  await expect(confirmDelete).toBeDisabled();
+  await dialog.getByLabel("输入空间名称以确认").fill("rag lab");
+  await expect(confirmDelete).toBeDisabled();
+  await dialog.getByLabel("输入空间名称以确认").fill("RAG Lab");
+  await expect(confirmDelete).toBeEnabled();
+  await confirmDelete.click();
+
+  await expect(page.getByRole("button", { name: "RAG Lab" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Keep Space" })).toBeVisible();
+  const remaining = await page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  }, WORKSPACE_V2_KEY);
+  expect(remaining.learningSpaces.map((candidate: { name: string }) => candidate.name)).toEqual([
+    "Keep Space",
+  ]);
+  expect(remaining.plans.every(
+    (plan: { ownerEntityId: string }) =>
+      plan.ownerEntityId === remaining.learningSpaces[0].id,
+  )).toBe(true);
 });
 
 test("today starts the next real task and can complete it inline", async ({ page }) => {
