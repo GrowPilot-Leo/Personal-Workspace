@@ -73,7 +73,7 @@ export function LearningDeleteDialog({
             先导出
           </button>
           <button
-            className="danger-action"
+            className="secondary-action text-destructive"
             disabled={confirmation !== spaceName}
             onClick={confirmDelete}
             type="button"
