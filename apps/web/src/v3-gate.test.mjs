@@ -172,8 +172,9 @@ test("V3 calm day theme keeps truthful labels and semantic contrast tokens", () 
 });
 
 test("V3-009: Learning plans, Today executes, and Review owns reflection", () => {
-  assert.ok(learning.includes("加入今日"));
-  assert.ok(learning.includes('href="/today"'));
+  assert.ok(learning.includes("scheduleLearningTask"));
+  assert.equal(learning.includes("加入今日"), false);
+  assert.equal(learning.includes('href="/today"'), false);
   assert.equal(learning.includes("saveReview"), false);
   assert.equal(learning.includes("rollDailyLoopForward"), false);
   assert.equal(learning.includes("保存复盘"), false);
