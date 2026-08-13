@@ -93,14 +93,14 @@ test("today: aggregates and sorts module summaries by due time", () => {
     {
       moduleId: "career",
       items: [
-        { id: "c1", sourceModule: "career", title: "职位任务", dueAt: "2026-08-06T15:00:00Z", status: "active" },
+        { id: "c1", sourceModule: "career", sourceEntityId: "role-1", sourceLabel: "职业", title: "职位任务", durationMinutes: 20, dueAt: "2026-08-06T15:00:00Z", status: "active" },
       ],
     },
     {
       moduleId: "learning",
       items: [
-        { id: "l1", sourceModule: "learning", title: "学习任务", dueAt: "2026-08-06T09:00:00Z", status: "planned" },
-        { id: "l2", sourceModule: "learning", title: "无截止任务", status: "planned" },
+        { id: "l1", sourceModule: "learning", sourceEntityId: "space-1", sourceLabel: "学习", title: "学习任务", durationMinutes: 30, dueAt: "2026-08-06T09:00:00Z", status: "planned" },
+        { id: "l2", sourceModule: "learning", sourceEntityId: "space-1", sourceLabel: "学习", title: "无截止任务", durationMinutes: 15, status: "planned" },
       ],
     },
   ]);
