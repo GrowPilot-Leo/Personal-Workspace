@@ -354,6 +354,32 @@ export function summarizeTasksForToday(
     }));
 }
 
+/**
+ * Pure daily capacity projection for a single learning space. Today calls this
+ * instead of reading Learning plan internals directly. Only active daily plan
+ * versions for the requested date contribute; null capacity values are ignored
+ * and the whole result is null when no value exists.
+ */
+export function summarizeDailyCapacityForToday(
+  space: Pick<LearningSpace, "id">,
+  plans: Plan<LearningPlanData>[],
+  dateKey: string,
+): number | null {
+  let sum = 0;
+  let hasValue = false;
+  for (const plan of plans) {
+    if (plan.ownerModuleId !== "learning") continue;
+    if (plan.ownerEntityId !== space.id) continue;
+    if (plan.horizon !== "daily") continue;
+    const data = activePlanData(plan);
+    if (data.periodKey !== dateKey) continue;
+    if (data.capacityMinutes === null) continue;
+    sum += data.capacityMinutes;
+    hasValue = true;
+  }
+  return hasValue ? sum : null;
+}
+
 export function buildLearningSpaceExport(
   workspace: Pick<
     LearningWorkspaceCollections,

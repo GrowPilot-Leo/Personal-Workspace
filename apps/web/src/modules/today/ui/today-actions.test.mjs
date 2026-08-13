@@ -301,3 +301,117 @@ test("toggleWorkspaceTaskCompletion does not mutate the input workspace", () => 
   toggleWorkspaceTaskCompletion(ws, "t1", NOW);
   assert.deepEqual(ws, before);
 });
+
+// ---- task action ownership guards ----
+
+test("startWorkspaceTask rejects non-learning tasks", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [task("t1", { ownerModuleId: "career" })],
+  });
+  const next = startWorkspaceTask(ws, "t1", NOW);
+  assert.equal(next, ws);
+  assert.equal(next.tasks.find((candidate) => candidate.id === "t1").status, "planned");
+});
+
+test("toggleWorkspaceTaskCompletion rejects English and Fitness tasks", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [
+      task("t1", { ownerModuleId: "english" }),
+      task("t2", { ownerModuleId: "fitness" }),
+    ],
+  });
+  const afterEnglish = toggleWorkspaceTaskCompletion(ws, "t1", NOW);
+  assert.equal(afterEnglish, ws);
+  assert.equal(afterEnglish.events.length, 0);
+  const afterFitness = toggleWorkspaceTaskCompletion(ws, "t2", NOW);
+  assert.equal(afterFitness, ws);
+  assert.equal(afterFitness.events.length, 0);
+});
+
+test("non-learning tasks never append learning.task.completed events", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [task("t1", { ownerModuleId: "career" })],
+  });
+  const next = toggleWorkspaceTaskCompletion(ws, "t1", NOW);
+  assert.equal(next.events.length, 0);
+});
+
+test("archived-space tasks cannot be started or completed", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace, archivedSpace],
+    tasks: [task("t1", { ownerEntityId: "space-2" })],
+  });
+  const started = startWorkspaceTask(ws, "t1", NOW);
+  assert.equal(started, ws);
+  const completed = toggleWorkspaceTaskCompletion(ws, "t1", NOW);
+  assert.equal(completed, ws);
+  assert.equal(completed.events.length, 0);
+});
+
+test("rejection paths leave the input workspace unmodified", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace, archivedSpace],
+    tasks: [
+      task("t1", { ownerModuleId: "career" }),
+      task("t2", { ownerEntityId: "space-2" }),
+      task("t3", { ownerModuleId: "english" }),
+    ],
+  });
+  const before = snapshot(ws);
+  startWorkspaceTask(ws, "t1", NOW);
+  startWorkspaceTask(ws, "t2", NOW);
+  toggleWorkspaceTaskCompletion(ws, "t3", NOW);
+  toggleWorkspaceTaskCompletion(ws, "nonexistent", NOW);
+  assert.deepEqual(ws, before);
+});
+
+// ---- reviewDue workspace scoping ----
+
+test("reviewDue stays true when only a Learning daily review exists", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [task("t1")],
+    reviews: [
+      {
+        id: "r1",
+        ownerModuleId: "learning",
+        ownerEntityId: "space-1",
+        horizon: "daily",
+        periodKey: DATE,
+        wins: "ok",
+        blockers: "",
+        adjustment: "",
+        submittedAt: NOW,
+        updatedAt: NOW,
+      },
+    ],
+  });
+  const view = buildTodayViewState(ws, DATE);
+  assert.equal(view.reviewDue, true);
+});
+
+test("reviewDue is false when a Workspace daily review exists for the date", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [task("t1")],
+    reviews: [
+      {
+        id: "r1",
+        ownerModuleId: "workspace",
+        ownerEntityId: null,
+        horizon: "daily",
+        periodKey: DATE,
+        wins: "ok",
+        blockers: "",
+        adjustment: "",
+        submittedAt: NOW,
+        updatedAt: NOW,
+      },
+    ],
+  });
+  const view = buildTodayViewState(ws, DATE);
+  assert.equal(view.reviewDue, false);
+});

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { activePlanData, createPlan } from "../../core/plans.ts";
+import { activePlanData, createPlan, revisePlan } from "../../core/plans.ts";
 import { createTask } from "../../core/tasks.ts";
 import {
   buildLearningSpaceExport,
@@ -10,6 +10,7 @@ import {
   reviseLearningPlan,
   scheduleLearningTask,
   setLearningSpaceStatus,
+  summarizeDailyCapacityForToday,
   summarizeTasksForToday,
   updateLearningSpace,
 } from "./public.ts";
@@ -38,6 +39,8 @@ function makePlan({
   parentPlanId = "plan-target-weekly",
   taskIds = [],
   title = "今日任务",
+  periodKey = "2026-08-10",
+  capacityMinutes = null,
 } = {}) {
   return createPlan({
     id,
@@ -46,12 +49,12 @@ function makePlan({
     horizon,
     data: {
       learningSpaceId: ownerEntityId,
-      periodKey: "2026-08-10",
+      periodKey,
       title,
       goal: "",
       parentPlanId,
       taskIds,
-      capacityMinutes: null,
+      capacityMinutes,
     },
     now: CREATED_AT,
   });
@@ -383,4 +386,70 @@ test("Today summaries include only matching learning tasks and expose source-spa
     dueAt: ownedTask.dueAt,
     status: ownedTask.status,
   }]);
+});
+
+test("summarizeDailyCapacityForToday returns the space's capacity for the date", () => {
+  const space = makeSpace();
+  const plans = [
+    makePlan({ id: "p1", capacityMinutes: 60 }),
+    makePlan({ id: "p2", capacityMinutes: 30 }),
+  ];
+  assert.equal(summarizeDailyCapacityForToday(space, plans, "2026-08-10"), 90);
+});
+
+test("summarizeDailyCapacityForToday ignores other spaces", () => {
+  const space = makeSpace();
+  const plans = [
+    makePlan({ id: "p1", capacityMinutes: 60 }),
+    makePlan({ id: "p2", ownerEntityId: "space-other", capacityMinutes: 30 }),
+  ];
+  assert.equal(summarizeDailyCapacityForToday(space, plans, "2026-08-10"), 60);
+});
+
+test("summarizeDailyCapacityForToday ignores other dates", () => {
+  const space = makeSpace();
+  const plans = [
+    makePlan({ id: "p1", capacityMinutes: 60 }),
+    makePlan({ id: "p2", periodKey: "2026-08-11", capacityMinutes: 30 }),
+  ];
+  assert.equal(summarizeDailyCapacityForToday(space, plans, "2026-08-10"), 60);
+});
+
+test("summarizeDailyCapacityForToday ignores weekly and monthly horizons", () => {
+  const space = makeSpace();
+  const plans = [
+    makePlan({ id: "p1", capacityMinutes: 60 }),
+    makePlan({ id: "p2", horizon: "weekly", capacityMinutes: 120 }),
+    makePlan({ id: "p3", horizon: "monthly", capacityMinutes: 240 }),
+  ];
+  assert.equal(summarizeDailyCapacityForToday(space, plans, "2026-08-10"), 60);
+});
+
+test("summarizeDailyCapacityForToday uses the active plan version", () => {
+  const space = makeSpace();
+  const plan = makePlan({ id: "p1", capacityMinutes: 60 });
+  const revised = revisePlan(
+    plan,
+    { ...activePlanData(plan), capacityMinutes: 90 },
+    "user-edit",
+    CREATED_AT,
+  );
+  assert.equal(summarizeDailyCapacityForToday(space, [revised], "2026-08-10"), 90);
+});
+
+test("summarizeDailyCapacityForToday returns null when no capacity exists", () => {
+  const space = makeSpace();
+  const plans = [makePlan({ id: "p1", capacityMinutes: null })];
+  assert.equal(summarizeDailyCapacityForToday(space, plans, "2026-08-10"), null);
+});
+
+test("summarizeDailyCapacityForToday does not mutate input plans", () => {
+  const space = makeSpace();
+  const plans = [
+    makePlan({ id: "p1", capacityMinutes: 60 }),
+    makePlan({ id: "p2", capacityMinutes: 30 }),
+  ];
+  const before = JSON.parse(JSON.stringify(plans));
+  summarizeDailyCapacityForToday(space, plans, "2026-08-10");
+  assert.deepEqual(plans, before);
 });

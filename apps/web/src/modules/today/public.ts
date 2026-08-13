@@ -3,7 +3,10 @@ import type { EntityId } from "@/core/identity";
 export type TodayItem = {
   id: EntityId;
   sourceModule: string;
+  sourceEntityId: EntityId;
+  sourceLabel: string;
   title: string;
+  durationMinutes: number;
   dueAt?: string;
   status: "planned" | "active" | "done";
 };
