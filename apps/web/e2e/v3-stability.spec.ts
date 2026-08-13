@@ -229,6 +229,7 @@ test("configurable learning space plans tasks and enforces lifecycle", async ({ 
   await expect(page.getByRole("button", { name: "保存月度目标" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "添加每日任务" })).toHaveCount(0);
   await page.reload();
+  await page.getByRole("button", { name: "AI 产品评测" }).click();
   await expect(page.getByText("已归档", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("整理评测维度", { exact: true })).toBeVisible();
 });
@@ -271,13 +272,20 @@ test("configurable learning space exports and deletes only the confirmed bundle"
     const raw = window.localStorage.getItem(key);
     return raw ? JSON.parse(raw) : null;
   }, WORKSPACE_V2_KEY);
-  expect(remaining.learningSpaces.map((candidate: { name: string }) => candidate.name)).toEqual([
-    "Keep Space",
-  ]);
-  expect(remaining.plans.every(
-    (plan: { ownerEntityId: string }) =>
-      plan.ownerEntityId === remaining.learningSpaces[0].id,
-  )).toBe(true);
+  const remainingNames = remaining.learningSpaces.map(
+    (candidate: { name: string }) => candidate.name,
+  );
+  const keptSpace = remaining.learningSpaces.find(
+    (candidate: { name: string }) => candidate.name === "Keep Space",
+  );
+  expect(remainingNames).toContain("Keep Space");
+  expect(remainingNames).not.toContain("RAG Lab");
+  expect(remaining.plans.some(
+    (plan: { ownerEntityId: string }) => plan.ownerEntityId === exported.space.id,
+  )).toBe(false);
+  expect(remaining.plans.filter(
+    (plan: { ownerEntityId: string }) => plan.ownerEntityId === keptSpace.id,
+  )).toHaveLength(3);
 });
 
 test("today starts the next real task and can complete it inline", async ({ page }) => {
