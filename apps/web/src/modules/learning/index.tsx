@@ -202,7 +202,7 @@ function LearningSpaceWorkspace({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {(space.status === "draft" || space.status === "planned") && (
+          {space.status === "draft" && (
             <button
               className="primary-action"
               onClick={() =>
@@ -213,7 +213,7 @@ function LearningSpaceWorkspace({
               开始学习
             </button>
           )}
-          {space.status === "active" && (
+          {(space.status === "planned" || space.status === "active") && (
             <button
               className="secondary-action"
               onClick={() =>
