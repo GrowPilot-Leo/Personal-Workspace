@@ -223,6 +223,22 @@ test("configurable learning space plans tasks and enforces lifecycle", async ({ 
   await expect(page.getByRole("button", { name: "添加每日任务" })).toBeDisabled();
   await page.getByRole("button", { name: "继续学习" }).click();
   await expect(page.getByRole("button", { name: "暂停空间" })).toBeVisible();
+
+  await page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return;
+    const workspace = JSON.parse(raw);
+    const space = workspace.learningSpaces.find(
+      (candidate: { name: string }) => candidate.name === "AI 产品评测",
+    );
+    space.status = "planned";
+    window.localStorage.setItem(key, JSON.stringify(workspace));
+  }, WORKSPACE_V2_KEY);
+  await page.reload();
+  await page.getByRole("button", { name: "AI 产品评测" }).click();
+  await page.getByRole("button", { name: "暂停空间" }).click();
+  await expect(page.getByRole("button", { name: "添加每日任务" })).toBeDisabled();
+  await page.getByRole("button", { name: "继续学习" }).click();
   await page.getByRole("button", { name: "归档空间" }).click();
 
   await expect(page.getByText("已归档", { exact: true }).first()).toBeVisible();
