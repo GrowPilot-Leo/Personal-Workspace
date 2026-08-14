@@ -16,25 +16,6 @@ const emptyDailyLoop = JSON.stringify({
   updatedAt: "2026-08-10T00:00:00.000Z",
 });
 
-const seededDailyLoop = JSON.stringify({
-  version: 1,
-  activeDate: "2026-08-10",
-  goal: "完成 RAG 方案",
-  availableMinutes: 60,
-  tasks: [
-    {
-      id: "task-1",
-      title: "整理 RAG 流程",
-      durationMinutes: 30,
-      completedAt: null,
-      createdAt: "2026-08-10T00:00:00.000Z",
-    },
-  ],
-  review: null,
-  history: [],
-  updatedAt: "2026-08-10T00:00:00.000Z",
-});
-
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ({ key, value }) => window.localStorage.setItem(key, value),
@@ -347,22 +328,109 @@ test("source-tagged learning task round trips through Today", async ({ page }) =
   expect(storedTask.completedAt).toEqual(expect.any(String));
 });
 
-test("review saves real daily review and enables next-day rollover", async ({ page }) => {
-  await page.addInitScript(
-    ({ key, value }) => window.localStorage.setItem(key, value),
-    { key: DAILY_LOOP_KEY, value: seededDailyLoop },
-  );
-  await page.goto("/review");
+test("review saves Workspace V2 and rolls only eligible Learning tasks forward", async ({
+  page,
+}) => {
+  const activeTitle = "结转任务";
+  const pausedTitle = "暂停任务";
 
-  await page.getByLabel("今天完成了什么、学会了什么？").fill("完成了 RAG 流程整理");
-  await page.getByLabel("哪里卡住了？").fill("资料较分散");
-  await page.getByLabel("下一次准备怎么调整？").fill("先固定输入输出");
+  await page.goto("/learning");
+  await createLearningSpace(page, "Active Loop", "验证结转");
+  await page.getByRole("button", { name: "开始学习" }).click();
+  await page.getByLabel("任务标题").fill(activeTitle);
+  await page.getByRole("button", { name: "添加每日任务" }).click();
+
+  await createLearningSpace(page, "Paused Loop", "保持暂停");
+  await page.getByRole("button", { name: "开始学习" }).click();
+  await page.getByLabel("任务标题").fill(pausedTitle);
+  await page.getByRole("button", { name: "添加每日任务" }).click();
+  await page.getByRole("button", { name: "暂停空间" }).click();
+
+  const before = await page.evaluate(
+    ({ key, activeTitle, pausedTitle }) => {
+      const workspace = JSON.parse(window.localStorage.getItem(key)!);
+      const taskByTitle = (title: string) =>
+        workspace.tasks.find((task: { title: string }) => task.title === title);
+      return {
+        activeTask: taskByTitle(activeTitle),
+        pausedTask: taskByTitle(pausedTitle),
+        plans: JSON.stringify(workspace.plans),
+      };
+    },
+    { key: WORKSPACE_V2_KEY, activeTitle, pausedTitle },
+  );
+
+  await page.goto("/review");
+  await page.getByLabel("今天完成了什么、学会了什么？").fill("完成了结转验证");
+  await page.getByLabel("哪里卡住了？").fill("暂无");
+  await page.getByLabel("下一次准备怎么调整？").fill("保持单任务推进");
   await page.getByRole("button", { name: "保存今日复盘" }).click();
 
   await expect(page.getByText("复盘已保存")).toBeVisible();
-  await expect(page.getByRole("button", { name: "归档并开始下一天" })).toBeEnabled();
-});
+  const rollover = page.getByRole("button", { name: "归档并开始下一天" });
+  await expect(rollover).toBeEnabled();
+  await rollover.click();
+  await expect(page.locator('[aria-live="polite"]')).toContainText(
+    "今日已归档，未完成任务已结转到下一天。",
+  );
 
+  const after = await page.evaluate(
+    ({ key, activeTitle, pausedTitle }) => {
+      const workspace = JSON.parse(window.localStorage.getItem(key)!);
+      const now = new Date();
+      const dateKey = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return year + "-" + month + "-" + day;
+      };
+      const nextDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+      );
+      const taskByTitle = (title: string) =>
+        workspace.tasks.find((task: { title: string }) => task.title === title);
+      return {
+        fromDate: dateKey(now),
+        toDate: dateKey(nextDate),
+        activeTask: taskByTitle(activeTitle),
+        pausedTask: taskByTitle(pausedTitle),
+        plans: JSON.stringify(workspace.plans),
+        reviews: workspace.reviews.filter(
+          (review: {
+            ownerModuleId: string;
+            ownerEntityId: string | null;
+            horizon: string;
+            periodKey: string;
+          }) =>
+            review.ownerModuleId === "workspace" &&
+            review.ownerEntityId === null &&
+            review.horizon === "daily" &&
+            review.periodKey === dateKey(now),
+        ),
+      };
+    },
+    { key: WORKSPACE_V2_KEY, activeTitle, pausedTitle },
+  );
+
+  expect(after.reviews).toHaveLength(1);
+  expect(after.reviews[0]).toMatchObject({
+    wins: "完成了结转验证",
+    blockers: "暂无",
+    adjustment: "保持单任务推进",
+  });
+  expect(after.activeTask).toMatchObject({
+    id: before.activeTask.id,
+    scheduledDate: after.toDate,
+    status: "planned",
+  });
+  expect(after.pausedTask).toMatchObject({
+    id: before.pausedTask.id,
+    scheduledDate: after.fromDate,
+  });
+  expect(after.plans).toBe(before.plans);
+});
 test("settings owns appearance and local data controls", async ({ page }) => {
   await page.goto("/settings");
   const main = page.locator("main");
