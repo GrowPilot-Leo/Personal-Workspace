@@ -304,21 +304,47 @@ test("configurable learning space exports and deletes only the confirmed bundle"
   )).toHaveLength(3);
 });
 
-test("today starts the next real task and can complete it inline", async ({ page }) => {
-  await page.addInitScript(
-    ({ key, value }) => window.localStorage.setItem(key, value),
-    { key: DAILY_LOOP_KEY, value: seededDailyLoop },
-  );
+test("source-tagged learning task round trips through Today", async ({ page }) => {
+  const spaceName = "AI 产品评测";
+  const taskTitle = "整理评测维度";
+
+  await page.goto("/learning");
+  await createLearningSpace(page, spaceName, "建立可复用的评测方法");
+  await page.getByRole("button", { name: "开始学习" }).click();
+  await page.getByLabel("任务标题").fill(taskTitle);
+  await page.getByLabel("预计分钟").fill("45");
+  await page.getByRole("button", { name: "添加每日任务" }).click();
+
   await page.goto("/today");
+  const taskItem = page.getByRole("listitem").filter({ hasText: taskTitle });
+  await expect(taskItem).toContainText(spaceName);
+  await page.getByRole("button", { name: `开始任务：${taskTitle}` }).click();
+  await expect(page.locator('[aria-live="polite"]')).toContainText(
+    `已开始：${taskTitle}`,
+  );
+  await page.getByRole("button", { name: `完成任务：${taskTitle}` }).click();
+  await expect(
+    page.getByRole("button", { name: `撤销完成：${taskTitle}` }),
+  ).toBeVisible();
 
-  await page.getByRole("button", { name: /开始下一项/ }).click();
-  await expect(page.locator('[aria-live="polite"]')).toContainText("已开始：整理 RAG 流程");
+  await page.goto("/learning");
+  await page.getByRole("button", { name: spaceName }).click();
+  const learningTask = page.getByRole("listitem").filter({ hasText: taskTitle });
+  await expect(learningTask).toContainText("已完成");
 
-  await page.getByRole("button", { name: "完成任务：整理 RAG 流程" }).click();
-  await expect(page.getByRole("button", { name: "撤销完成：整理 RAG 流程" })).toBeVisible();
-  await expect(page.getByText("1/1")).toBeVisible();
-  await expect(page.getByRole("list", { name: "今日时间线" })).toBeVisible();
-  await expect(page.getByText("今日节奏")).toBeVisible();
+  const storedTask = await page.evaluate(
+    ({ key, title }) => {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return null;
+      const workspace = JSON.parse(raw);
+      return workspace.tasks.find(
+        (task: { title: string }) => task.title === title,
+      );
+    },
+    { key: WORKSPACE_V2_KEY, title: taskTitle },
+  );
+  expect(storedTask).toMatchObject({ status: "done" });
+  expect(storedTask.completedAt).toEqual(expect.any(String));
 });
 
 test("review saves real daily review and enables next-day rollover", async ({ page }) => {

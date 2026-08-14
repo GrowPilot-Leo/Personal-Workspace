@@ -79,8 +79,12 @@ test("V3-002: mobile nav handles safe-area inset", () => {
 // ---- V3-003: interaction feedback — no enabled no-op buttons ----
 test("V3-003: Today starts and completes persisted tasks", () => {
   assert.ok(todayView.includes("onClick={startNextTask}"), "next-task action must be wired");
-  assert.ok(todayView.includes("toggleTask"), "Today must support inline task completion");
-  assert.ok(todayView.includes("saveDailyLoop(next)"), "task changes must persist");
+  assert.ok(todayView.includes("startWorkspaceTask"), "Today must start Workspace V2 tasks");
+  assert.ok(
+    todayView.includes("toggleWorkspaceTaskCompletion"),
+    "Today must support inline Workspace V2 task completion",
+  );
+  assert.ok(todayView.includes("saveWorkspace(nextWorkspace)"), "task changes must persist");
   assert.ok(todayView.includes("scrollIntoView"), "start action must locate the active task");
   assert.ok(todayView.includes('aria-live="polite"'), "feedback must be announced");
 });
