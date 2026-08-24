@@ -366,6 +366,12 @@ function workspaceFromV1(
   );
 }
 
+export function migrateDailyLoopPayloadToWorkspaceV2(
+  value: unknown,
+  now: IsoDateTime,
+): WorkspaceStateV2 | null {
+  return isValidV1DailyLoop(value) ? workspaceFromV1(value, now) : null;
+}
 type ParsedWorkspaceRoot = {
   workspace: WorkspaceStateV2;
   needsRepair: boolean;

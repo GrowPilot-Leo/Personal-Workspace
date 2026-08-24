@@ -329,3 +329,133 @@ test("review: rollover is idempotent and never edits Learning plans", () => {
   assert.strictEqual(second, first);
   assert.equal(new Set(second.tasks.map((task) => task.id)).size, second.tasks.length);
 });
+test("settings data: exports the complete normalized Workspace V2 envelope", async () => {
+  const data = await import("./settings/data.ts");
+  const workspace = { ...reviewWorkspace(), plans: [] };
+  const exported = data.buildWorkspaceExport(
+    workspace,
+    { theme: "day", motion: "reduced" },
+    "2026-08-14T14:00:00.000Z",
+  );
+
+  assert.deepEqual(
+    {
+      schema: exported.schema,
+      version: exported.version,
+      exportedAt: exported.exportedAt,
+      appearance: exported.appearance,
+      workspaceVersion: exported.workspace.version,
+      spaceCount: exported.workspace.learningSpaces.length,
+      taskCount: exported.workspace.tasks.length,
+      reviewCount: exported.workspace.reviews.length,
+    },
+    {
+      schema: "growpilot.workspace.export",
+      version: 2,
+      exportedAt: "2026-08-14T14:00:00.000Z",
+      appearance: { theme: "day", motion: "reduced" },
+      workspaceVersion: 2,
+      spaceCount: 6,
+      taskCount: 9,
+      reviewCount: 0,
+    },
+  );
+});
+
+test("settings data: rejects a malformed V2 root instead of normalizing it empty", async () => {
+  const data = await import("./settings/data.ts");
+  const workspace = { ...reviewWorkspace(), plans: [] };
+  const validEnvelope = {
+    schema: "growpilot.workspace.export",
+    version: 2,
+    exportedAt: "2026-08-14T14:00:00.000Z",
+    appearance: { theme: "night", motion: "invalid" },
+    workspace,
+  };
+
+  const parsed = data.parseWorkspaceImport(
+    validEnvelope,
+    "2026-08-14T15:00:00.000Z",
+  );
+  assert.equal(parsed.workspace.version, 2);
+  assert.deepEqual(parsed.appearance, { theme: "night" });
+
+  assert.equal(
+    data.parseWorkspaceImport(
+      {
+        ...validEnvelope,
+        workspace: { ...workspace, events: null },
+      },
+      "2026-08-14T15:00:00.000Z",
+    ),
+    null,
+  );
+  assert.equal(
+    data.parseWorkspaceImport(
+      { schema: "growpilot.workspace.export", version: 2 },
+      "2026-08-14T15:00:00.000Z",
+    ),
+    null,
+  );
+});
+
+test("settings data: previews normalized import counts before overwrite", async () => {
+  const data = await import("./settings/data.ts");
+  const workspace = { ...reviewWorkspace(), plans: [] };
+  const parsed = data.parseWorkspaceImport(
+    data.buildWorkspaceExport(
+      workspace,
+      { theme: "day", motion: "system" },
+      "2026-08-14T14:00:00.000Z",
+    ),
+    "2026-08-14T15:00:00.000Z",
+  );
+
+  assert.deepEqual(parsed.summary, {
+    spaces: 6,
+    tasks: 9,
+    reviews: 0,
+  });
+});
+test("settings data: migrates the previous V1 export through the existing converter", async () => {
+  const data = await import("./settings/data.ts");
+  const parsed = data.parseWorkspaceImport(
+    {
+      schema: "growpilot.workspace.export",
+      version: 1,
+      appearance: { theme: "dusk", motion: "full" },
+      dailyLoop: {
+        version: 1,
+        activeDate: "2026-08-14",
+        goal: "迁移旧备份",
+        availableMinutes: 60,
+        tasks: [
+          {
+            id: "legacy-task",
+            title: "恢复旧任务",
+            durationMinutes: 30,
+            completedAt: null,
+            createdAt: "2026-08-14T08:00:00.000Z",
+          },
+        ],
+        review: null,
+      },
+    },
+    "2026-08-14T15:00:00.000Z",
+  );
+
+  assert.equal(parsed.workspace.tasks[0].id, "legacy-task");
+  assert.equal(parsed.workspace.learningSpaces[0].goal, "迁移旧备份");
+  assert.deepEqual(parsed.appearance, { theme: "dusk", motion: "full" });
+  assert.equal(
+    data.parseWorkspaceImport(
+      {
+        schema: "growpilot.workspace.export",
+        version: 1,
+        dailyLoop: { version: 1, tasks: "invalid" },
+      },
+      "2026-08-14T15:00:00.000Z",
+    ),
+    null,
+  );
+});

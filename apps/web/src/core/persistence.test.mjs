@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createEmptyDailyLoopState } from "./daily-loop.ts";
 import {
   MIGRATION_LOG_KEY,
+  V1_DAILY_LOOP_BACKUP_KEY,
   V1_DAILY_LOOP_KEY,
   V2_MIGRATED_KEY,
   WORKSPACE_V2_CORRUPT_BACKUP_KEY,
@@ -312,4 +313,25 @@ test("corrupt V1 data falls back to a usable empty legacy state", () => {
   assert.equal(state.tasks.length, 0);
   assert.equal(state.goal, "");
   assert.equal(repository.lastMigration()?.status, "failed");
+});
+test("saveWorkspace preserves appearance, migration, and backup keys", () => {
+  const storage = memoryStorage({
+    "growpilot.theme.v1": "dusk",
+    "growpilot.motion.v1": "reduced",
+    [MIGRATION_LOG_KEY]: "migration-records",
+    [V1_DAILY_LOOP_BACKUP_KEY]: "legacy-backup",
+    [WORKSPACE_V2_CORRUPT_BACKUP_KEY]: "corrupt-backup",
+  });
+  const repository = createWorkspaceRepository(storage);
+
+  repository.saveWorkspace(workspaceFixture({ learningSpaces: [], tasks: [] }));
+
+  assert.equal(storage.getItem("growpilot.theme.v1"), "dusk");
+  assert.equal(storage.getItem("growpilot.motion.v1"), "reduced");
+  assert.equal(storage.getItem(MIGRATION_LOG_KEY), "migration-records");
+  assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), "legacy-backup");
+  assert.equal(
+    storage.getItem(WORKSPACE_V2_CORRUPT_BACKUP_KEY),
+    "corrupt-backup",
+  );
 });

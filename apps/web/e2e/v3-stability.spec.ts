@@ -431,17 +431,143 @@ test("review saves Workspace V2 and rolls only eligible Learning tasks forward",
   });
   expect(after.plans).toBe(before.plans);
 });
-test("settings owns appearance and local data controls", async ({ page }) => {
+test("workspace data export, import, and clear preserve local boundaries", async ({
+  page,
+}) => {
+  await page.goto("/learning");
+  await createLearningSpace(page, "Backup Space", "验证本地备份");
+  await page.getByRole("button", { name: "开始学习" }).click();
+  await page.getByLabel("任务标题").fill("备份任务");
+  await page.getByRole("button", { name: "添加每日任务" }).click();
+
+  await page.goto("/review");
+  await page.getByLabel("今天完成了什么、学会了什么？").fill("记录备份证据");
+  await page.getByRole("button", { name: "保存今日复盘" }).click();
+  await expect(page.getByText("复盘已保存")).toBeVisible();
+
   await page.goto("/settings");
   const main = page.locator("main");
-
-  await main.getByRole("button", { name: "精简动效" }).click();
+  await main.getByRole("button", { name: "暮色", exact: true }).click();
+  await main.getByRole("button", { name: "精简动效", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dusk");
   await expect(page.locator("html")).toHaveAttribute("data-motion", "reduced");
-  await expect(main.getByRole("button", { name: "导出数据" })).toBeVisible();
-  await expect(main.getByRole("button", { name: "导入数据" })).toBeVisible();
-  await expect(main.getByRole("button", { name: "清空成长数据" })).toBeVisible();
-});
 
+  const beforeState = await page.evaluate((key) => {
+    window.localStorage.setItem(
+      "growpilot.daily-loop.v1.backup",
+      "legacy-backup",
+    );
+    window.localStorage.setItem(
+      "growpilot.workspace.v2.corrupt.backup",
+      "corrupt-backup",
+    );
+    return {
+      workspace: window.localStorage.getItem(key),
+      migration: window.localStorage.getItem("growpilot.migrations.v1"),
+    };
+  }, WORKSPACE_V2_KEY);
+
+  const downloadPromise = page.waitForEvent("download");
+  await main.getByRole("button", { name: "导出数据" }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const exportedText = await readFile(downloadPath!, "utf8");
+  const exported = JSON.parse(exportedText);
+  expect(exported).toMatchObject({
+    schema: "growpilot.workspace.export",
+    version: 2,
+    appearance: { theme: "dusk", motion: "reduced" },
+  });
+  expect(exported.workspace.learningSpaces).toHaveLength(2);
+  expect(exported.workspace.tasks).toHaveLength(1);
+  expect(exported.workspace.reviews).toHaveLength(1);
+
+  const importInput = main.getByLabel("选择 GrowPilot 备份文件");
+  await importInput.setInputFiles({
+    name: "invalid-workspace.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        ...exported,
+        workspace: { ...exported.workspace, events: null },
+      }),
+    ),
+  });
+  await expect(
+    page.getByText("导入失败：请选择 GrowPilot 导出的有效 JSON 文件。"),
+  ).toBeVisible();
+  expect(
+    await page.evaluate((key) => window.localStorage.getItem(key), WORKSPACE_V2_KEY),
+  ).toBe(beforeState.workspace);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await main.getByRole("button", { name: "清空成长数据" }).click();
+  await expect(page.getByText("成长数据已清空。主题与动效设置仍然保留。")).toBeVisible();
+
+  const cleared = await page.evaluate((key) => {
+    const workspace = JSON.parse(window.localStorage.getItem(key)!);
+    return {
+      lengths: [
+        workspace.learningSpaces.length,
+        workspace.plans.length,
+        workspace.tasks.length,
+        workspace.reviews.length,
+        workspace.events.length,
+      ],
+      theme: window.localStorage.getItem("growpilot.theme.v1"),
+      motion: window.localStorage.getItem("growpilot.motion.v1"),
+      migration: window.localStorage.getItem("growpilot.migrations.v1"),
+      legacyBackup: window.localStorage.getItem(
+        "growpilot.daily-loop.v1.backup",
+      ),
+      corruptBackup: window.localStorage.getItem(
+        "growpilot.workspace.v2.corrupt.backup",
+      ),
+    };
+  }, WORKSPACE_V2_KEY);
+  expect(cleared).toEqual({
+    lengths: [0, 0, 0, 0, 0],
+    theme: "dusk",
+    motion: "reduced",
+    migration: beforeState.migration,
+    legacyBackup: "legacy-backup",
+    corruptBackup: "corrupt-backup",
+  });
+
+  await importInput.setInputFiles({
+    name: "workspace-v2.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        ...exported,
+        appearance: { theme: "day", motion: "off" },
+      }),
+    ),
+  });
+  await expect(
+    page.getByText("准备导入：2 个学习空间、1 个任务、1 条复盘。"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "确认导入" }).click();
+  await expect(
+    page.getByText("导入成功，当前成长数据已恢复。"),
+  ).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "day");
+  await expect(page.locator("html")).toHaveAttribute("data-motion", "off");
+
+  const restored = await page.evaluate((key) => {
+    const workspace = JSON.parse(window.localStorage.getItem(key)!);
+    return {
+      spaces: workspace.learningSpaces.length,
+      tasks: workspace.tasks.length,
+      reviews: workspace.reviews.length,
+    };
+  }, WORKSPACE_V2_KEY);
+  expect(restored).toEqual({ spaces: 2, tasks: 1, reviews: 1 });
+  for (const label of ["学习空间", "计划任务", "复盘记录"]) {
+    await expect(main.getByText(label, { exact: true })).toBeVisible();
+  }
+});
 test("rule-generated copy is labelled as an action suggestion", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page.getByText("行动建议")).toBeVisible();

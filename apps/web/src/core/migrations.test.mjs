@@ -53,6 +53,28 @@ const v1Fixture = JSON.stringify({
   review: { wins: "读完第一章", blockers: "时间不够", adjustment: "缩小范围" },
 });
 
+test("V1 payload converts to Workspace V2 without a storage boundary", async () => {
+  const migrations = await import("./migrations.ts");
+  assert.equal(
+    typeof migrations.migrateDailyLoopPayloadToWorkspaceV2,
+    "function",
+  );
+
+  const workspace = migrations.migrateDailyLoopPayloadToWorkspaceV2(
+    JSON.parse(v1Fixture),
+    "2026-08-06T00:00:00Z",
+  );
+  assert.equal(workspace.version, 2);
+  assert.deepEqual(workspace.tasks.map(({ id }) => id), ["t1", "t2"]);
+  assert.equal(workspace.learningSpaces[0].id, "learning-space-v1-daily-loop");
+  assert.equal(
+    migrations.migrateDailyLoopPayloadToWorkspaceV2(
+      { version: 1, tasks: "invalid" },
+      "2026-08-06T00:00:00Z",
+    ),
+    null,
+  );
+});
 test("migration maps V1 daily loop into V2 entities and preserves a backup", () => {
   const storage = memoryStorage({ [V1_DAILY_LOOP_KEY]: v1Fixture });
   const result = migrateDailyLoopV1ToV2(storage, "2026-08-06T00:00:00Z");
