@@ -6,15 +6,14 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import { MobileDrawer } from "@/components/layout/mobile-drawer";
 import { pageEnter } from "@/lib/motion-variants";
 import { useTheme } from "@/shared/theme/theme-provider";
 
 /**
  * Workbench shell: desktop Sidebar + TopBar + main workspace.
- * Mobile (< md): the desktop sidebar is hidden; a bottom nav (4 daily-loop
- * tabs) and a hamburger drawer (5 complementary entries) replace it. Safe-area
- * insets are handled by the fixed mobile nav.
+ * Mobile (< md): the desktop sidebar is hidden and the same four MVP routes
+ * remain available in the fixed bottom navigation. Safe-area insets are
+ * handled by the mobile nav.
  *
  * The main content area uses the semantic card surface so text keeps
  * full contrast under every theme; page switches re-animate the outlet
@@ -22,7 +21,6 @@ import { useTheme } from "@/shared/theme/theme-provider";
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
   const { motion: motionPreference } = useTheme();
   const reducedMotion =
@@ -43,7 +41,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         <TopBar
           collapsed={collapsed}
           onToggleSidebar={() => setCollapsed((v) => !v)}
-          onOpenDrawer={() => setDrawerOpen(true)}
         />
         <main className="calm-main flex-1 overflow-y-auto pb-20 md:pb-0">
           <motion.div
@@ -60,7 +57,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MobileNav />
-        <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       </div>
     </MotionConfig>
   );

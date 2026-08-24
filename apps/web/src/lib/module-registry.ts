@@ -84,3 +84,11 @@ export const moduleRegistry: ModuleDefinition[] = [
     description: "外观、模型与数据",
   },
 ];
+
+const mvpModuleKeys: ModuleKey[] = ["today", "learning", "review", "settings"];
+
+export const mvpModuleRegistry: ModuleDefinition[] = mvpModuleKeys.map((key) => {
+  const module = moduleRegistry.find((candidate) => candidate.key === key);
+  if (!module) throw new Error(`Missing MVP module metadata: ${key}`);
+  return module;
+});

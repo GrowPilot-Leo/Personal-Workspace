@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { moduleRegistry } from "./module-registry.ts";
+import { moduleRegistry, mvpModuleRegistry } from "./module-registry.ts";
 
 test("registry exposes nine modules with unique keys and hrefs", () => {
   const keys = moduleRegistry.map((m) => m.key);
@@ -23,4 +23,12 @@ test("registry includes today career review badge settings", () => {
     "settings",
     "today",
   ]);
+});
+
+test("MVP registry exposes exactly the four primary routes in order", () => {
+  assert.deepEqual(
+    mvpModuleRegistry.map((module) => module.key),
+    ["today", "learning", "review", "settings"],
+  );
+  assert.equal(moduleRegistry.length, 9);
 });

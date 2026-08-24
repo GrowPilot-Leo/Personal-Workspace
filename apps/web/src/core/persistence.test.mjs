@@ -202,7 +202,9 @@ test("loadWorkspace preserves valid collections when one collection is invalid",
   const state = repository.loadWorkspace();
 
   assert.deepEqual(state.learningSpaces, [learningSpace()]);
-  assert.deepEqual(state.tasks, [learningTask()]);
+  assert.deepEqual(state.tasks, [
+    { ...learningTask(), priority: "medium", tags: [], subtasks: [] },
+  ]);
   assert.deepEqual(state.plans, []);
   assert.deepEqual(state.reviews, []);
 });

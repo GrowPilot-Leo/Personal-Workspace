@@ -17,7 +17,7 @@ import {
   Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { moduleRegistry, type ModuleKey } from "@/lib/module-registry";
+import { mvpModuleRegistry, type ModuleKey } from "@/lib/module-registry";
 
 const icons: Record<ModuleKey, typeof Sun> = {
   today: Sun,
@@ -51,7 +51,7 @@ export function Sidebar({ collapsed, onNavigate }: SidebarProps) {
       aria-label="主导航"
     >
       <Link
-        href="/dashboard"
+        href="/today"
         className="flex h-14 items-center gap-2.5 px-4 text-sm font-semibold"
         onClick={onNavigate}
       >
@@ -74,7 +74,7 @@ export function Sidebar({ collapsed, onNavigate }: SidebarProps) {
       </Link>
 
       <nav className="flex-1 space-y-0.5 overflow-hidden px-2 py-2">
-        {moduleRegistry.map((module) => {
+        {mvpModuleRegistry.map((module) => {
           const Icon = icons[module.key];
           const active = isActive(module.href, module.key);
           return (

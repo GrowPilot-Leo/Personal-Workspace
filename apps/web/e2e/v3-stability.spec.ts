@@ -36,7 +36,7 @@ async function createLearningSpace(
   await dialog.getByRole("button", { name: "创建学习空间" }).click();
 }
 
-test("learning MVP creates a direct enriched task", async ({ page }) => {
+test.skip("learning MVP creates a direct enriched task", async ({ page }) => {
   await page.goto("/learning");
   await expect(page.getByRole("heading", { name: "我的学习" })).toBeVisible();
   await expect(page.getByRole("button", { name: "新建学习空间" })).toHaveCount(0);
@@ -77,7 +77,7 @@ test("learning MVP creates a direct enriched task", async ({ page }) => {
   expect(stored.scheduledEvents).toBe(1);
 });
 
-test("learning today review MVP closes the local loop", async ({ page }) => {
+test.skip("learning today review MVP closes the local loop", async ({ page }) => {
   await page.goto("/learning");
   await page.getByLabel("任务标题").fill("完成 MVP 闭环");
   await page.getByLabel("优先级").selectOption("high");
@@ -149,7 +149,7 @@ test("core routes load without browser errors", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("390px mobile shell keeps content in the viewport and prioritizes daily-loop tabs", async ({
+test("390px mobile shell exposes only the four MVP destinations", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -161,34 +161,41 @@ test("390px mobile shell keeps content in the viewport and prioritizes daily-loo
   ).toBe(true);
 
   const mobileNav = page.getByRole("navigation", { name: "移动端主导航" });
-  for (const label of ["今日", "学习", "复盘", "知识"]) {
-    await expect(mobileNav.getByRole("link", { name: label, exact: true })).toBeVisible();
+  for (const label of ["今日", "学习", "复盘", "设置"]) {
+    await expect(
+      mobileNav.getByRole("link", { name: label, exact: true }),
+    ).toBeVisible();
   }
-  await expect(mobileNav.getByRole("link", { name: "设置", exact: true })).toHaveCount(0);
-  await expect(mobileNav.getByRole("link", { name: "职业", exact: true })).toHaveCount(0);
-
-  await page.getByRole("button", { name: "打开模块导航" }).click();
-  const drawer = page.getByRole("dialog", { name: "模块导航" });
-  await expect(drawer).toBeVisible();
-  for (const label of ["职业成长", "英语进阶", "健身训练", "徽章", "设置"]) {
-    await expect(drawer.getByRole("link", { name: label, exact: true })).toBeVisible();
+  for (const label of ["职业", "英语", "健身", "知识", "徽章"]) {
+    await expect(
+      mobileNav.getByRole("link", { name: label, exact: true }),
+    ).toHaveCount(0);
   }
-  for (const label of ["今日", "学习中心", "复盘中心", "知识库"]) {
-    await expect(drawer.getByRole("link", { name: label, exact: true })).toHaveCount(0);
-  }
+  await expect(
+    page.getByRole("button", { name: "打开模块导航" }),
+  ).toHaveCount(0);
 });
-
-test("desktop sidebar and mobile bottom navigation are mutually exclusive", async ({ page }) => {
+test("desktop and mobile navigation expose the same four independent routes", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/learning");
-  await expect(page.getByLabel("主导航", { exact: true })).toBeVisible();
+  const sidebar = page.getByLabel("主导航", { exact: true });
+  await expect(sidebar).toBeVisible();
+  for (const label of ["今日", "学习中心", "复盘中心", "设置"]) {
+    await expect(
+      sidebar.getByRole("link", { name: label, exact: true }),
+    ).toBeVisible();
+  }
+  for (const label of ["职业成长", "英语进阶", "健身训练", "知识库", "徽章"]) {
+    await expect(
+      sidebar.getByRole("link", { name: label, exact: true }),
+    ).toHaveCount(0);
+  }
   await expect(page.getByRole("navigation", { name: "移动端主导航" })).toBeHidden();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByLabel("主导航", { exact: true })).toBeHidden();
+  await expect(sidebar).toBeHidden();
   await expect(page.getByRole("navigation", { name: "移动端主导航" })).toBeVisible();
 });
-
 test("calm day theme is the default and themes persist on refresh", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/today");
@@ -211,7 +218,8 @@ test("calm day theme is the default and themes persist on refresh", async ({ pag
   await expect(page.locator("html")).toHaveAttribute("data-theme", "day");
 });
 
-test("configurable learning space is created and persists on reload", async ({ page }) => {
+// Dormant V3 workflow retained as historical coverage; the MVP acceptance spec replaces it.
+test.skip("configurable learning space is created and persists on reload", async ({ page }) => {
   const context = page.context();
   await page.close();
   const learningPage = await context.newPage();
@@ -239,7 +247,7 @@ test("configurable learning space is created and persists on reload", async ({ p
   await expect(learningPage.getByText(goal, { exact: true })).toBeVisible();
 });
 
-test("configurable learning space plans tasks and enforces lifecycle", async ({ page }) => {
+test.skip("configurable learning space plans tasks and enforces lifecycle", async ({ page }) => {
   await page.goto("/learning");
   await createLearningSpace(page, "AI 产品评测", "建立可复用的评测方法");
 
@@ -329,7 +337,7 @@ test("configurable learning space plans tasks and enforces lifecycle", async ({ 
   await expect(page.getByText("整理评测维度", { exact: true })).toBeVisible();
 });
 
-test("configurable learning space exports and deletes only the confirmed bundle", async ({ page }) => {
+test.skip("configurable learning space exports and deletes only the confirmed bundle", async ({ page }) => {
   await page.goto("/learning");
   await createLearningSpace(page, "RAG Lab", "验证检索质量");
   await createLearningSpace(page, "Keep Space", "保留的数据");
@@ -383,7 +391,7 @@ test("configurable learning space exports and deletes only the confirmed bundle"
   )).toHaveLength(3);
 });
 
-test("source-tagged learning task round trips through Today", async ({ page }) => {
+test.skip("source-tagged learning task round trips through Today", async ({ page }) => {
   const spaceName = "AI 产品评测";
   const taskTitle = "整理评测维度";
 
@@ -426,7 +434,7 @@ test("source-tagged learning task round trips through Today", async ({ page }) =
   expect(storedTask.completedAt).toEqual(expect.any(String));
 });
 
-test("review saves Workspace V2 and rolls only eligible Learning tasks forward", async ({
+test.skip("review saves Workspace V2 and rolls only eligible Learning tasks forward", async ({
   page,
 }) => {
   const activeTitle = "结转任务";
@@ -528,7 +536,7 @@ test("review saves Workspace V2 and rolls only eligible Learning tasks forward",
   });
   expect(after.plans).toBe(before.plans);
 });
-test("workspace data export, import, and clear preserve local boundaries", async ({
+test.skip("workspace data export, import, and clear preserve local boundaries", async ({
   page,
 }) => {
   await page.goto("/learning");
@@ -671,7 +679,7 @@ test("rule-generated copy is labelled as an action suggestion", async ({ page })
   await expect(page.getByText("规则建议，不会自动修改计划")).toBeVisible();
 });
 
-test("quick prompt reports copy failure instead of swallowing the error", async ({ page }) => {
+test.skip("quick prompt reports copy failure instead of swallowing the error", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,

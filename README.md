@@ -1,72 +1,30 @@
-# GrowPilot — Personal Growth System
+# GrowPilot 0.1 MVP
 
-GrowPilot is a modular personal growth application centered on learning execution and review. It connects configurable learning spaces with fixed Career, English and Fitness modules through shared knowledge, traceable badges and replaceable AI providers.
+GrowPilot is a local-first personal learning loop. Version 0.1 deliberately ships one complete workflow instead of exposing unfinished modules:
 
-## Repository status
+    create a Learning task
+    -> execute it in Today
+    -> review the day
+    -> save, roll unfinished work forward, and back up locally
 
-### V1 working baseline
+## Shipped scope
 
-The current application provides a mobile-first daily loop:
+The visible application contains exactly four destinations:
 
-```text
-goal -> daily tasks -> completion -> review -> next-day rollover
-```
+- **Today** — execute today's Learning tasks, start one task at a time, check subtasks, complete or undo completion.
+- **Learning** — create, edit, and delete unfinished tasks in the default “我的学习” space. Tasks support notes, date, expected minutes, priority, up to three tags, and one-level subtasks.
+- **Review** — see today's completion facts, answer two prompts, save one daily review, and explicitly roll unfinished tasks to tomorrow.
+- **Settings** — select appearance and motion preferences, export the complete Workspace V2 backup, preview and confirm imports, or clear growth data.
 
-V1 data is stored locally in the current browser. Existing V1 behavior, tests, PWA setup and CI are the foundation for incremental V2 development.
+The root path and /dashboard both enter /today.
 
-### V2 product blueprint
+Career, English, Fitness, Knowledge, Badges, RAG, DeepSeek, agent harnesses, login, cloud sync, and Android packaging are not part of the 0.1 acceptance path. Their historical code and design documents may remain dormant for future work, but they are not visible in the MVP navigation.
 
-V2 is documented but not yet fully implemented.
+## Data and privacy boundary
 
-Start here:
+GrowPilot 0.1 has no account, server database, cloud synchronization, or model-provider connection. Growth data is stored only in the current browser's local storage.
 
-- [V2 documentation index](docs/v2/INDEX.md)
-- [Confirmed decisions](docs/v2/DECISIONS.md)
-- [Product specification](docs/v2/PRODUCT_SPEC.md)
-- [Module architecture](docs/v2/MODULE_ARCHITECTURE.md)
-- [Data model](docs/v2/DATA_MODEL.md)
-- [Agent Harness and RAG](docs/v2/AI_HARNESS_RAG.md)
-- [Design system](docs/v2/DESIGN_SYSTEM.md)
-- [Local demo brief](docs/v2/DEMO_IMPLEMENTATION_BRIEF.md)
-- [Delivery plan](docs/v2/DELIVERY_PLAN.md)
-
-Codex and contributors must read [AGENTS.md](AGENTS.md) before V2 changes.
-
-## V2 product boundaries
-
-Fixed platform capabilities:
-
-- Today
-- Learning Center
-- Review
-- Knowledge
-- Badges
-- Appearance
-- AI Settings
-- Data and Privacy
-
-Fixed business modules:
-
-- Career
-- English
-- Fitness
-
-AI learning, product learning and other subjects are configurable learning spaces. They are not permanent hard-coded modules.
-
-English supports daily and workplace listening, speaking, reading and writing. It is not limited to interview or job-search English.
-
-AI-generated skill assessments, plan revisions, body-image observations and memory updates require user confirmation.
-
-## Architecture principle
-
-```text
-Routes
--> module public APIs
--> core contracts and platform ports
--> replaceable storage, RAG, vision and LLM adapters
-```
-
-Modules do not import another module's internal files. New learning subjects should normally require template data, not new application code.
+Clearing browser/site data can permanently remove the workspace. Export a JSON backup regularly from **Settings**. Import always shows task, learning-space, and review counts before it overwrites the current workspace.
 
 ## Local development
 
@@ -75,36 +33,27 @@ Requirements:
 - Node.js 22 or newer
 - npm
 
-```bash
-npm install
-npm test
-npm run typecheck
-npm run build
-npm run dev
-```
+    npm install
+    npm test
+    npm run typecheck
+    npm run build
+    npm run dev
 
-Open `http://localhost:3000`.
+Open http://localhost:3000.
 
-## Existing V1 documentation
+Run the focused end-to-end MVP acceptance with:
 
-- [V1 product specification](docs/PRODUCT_SPEC.md)
-- [V1 architecture](docs/ARCHITECTURE.md)
-- [Development guide](docs/DEVELOPMENT_GUIDE.md)
-- [V1 module boundaries](docs/MODULES.md)
-- [MVP plan](docs/MVP_PLAN.md)
+    npx playwright test apps/web/e2e/mvp-closure.spec.ts --project=chromium
 
-V1 documents remain as historical context. V2 decisions live under `docs/v2`.
+## Current design and implementation records
+
+- [MVP design](docs/superpowers/specs/2026-08-24-learning-today-review-mvp-design.md)
+- [MVP implementation plan](docs/superpowers/plans/2026-08-24-learning-today-review-mvp.md)
+- [MVP acceptance record](docs/v2/MVP_ACCEPTANCE.md)
+- [V2 documentation index](docs/v2/INDEX.md)
+
+Older V1/V2 documents remain historical context and may describe modules that are dormant in GrowPilot 0.1.
 
 ## Change discipline
 
-Use focused Conventional Commits such as:
-
-```text
-feat(learning): add configurable learning-space schema
-feat(career): connect skill gaps to learning spaces
-feat(fitness): confirm vision observations before planning
-feat(knowledge): propose cited plan revisions
-feat(theme): add day night and dusk tokens
-```
-
-Every change should identify its owning module, data impact, public contract changes, migration requirement, verification and rollback path.
+Changes must state their owning module, local-data impact, migration requirement, verification evidence, and rollback point. Prefer focused Conventional Commits and keep the four-route MVP usable before expanding scope.

@@ -16,7 +16,7 @@ const src = (rel) => readFileSync(join(__dirname, rel), "utf8");
 const appShell = src("components/layout/app-shell.tsx");
 const topbar = src("components/layout/topbar.tsx");
 const mobileNav = src("components/layout/mobile-nav.tsx");
-const mobileDrawer = src("components/layout/mobile-drawer.tsx");
+const sidebar = src("components/layout/sidebar.tsx");
 const todayView = src("modules/today/ui/today-view.tsx");
 const dashboardCard = src("components/dashboard/dashboard-card.tsx");
 const quickPrompts = src("components/dashboard/quick-prompts-card.tsx");
@@ -41,7 +41,6 @@ test("V3-001: no bg-white / text-zinc / border-black in official UI", () => {
     todayView.match(/bg-white|text-zinc|border-black/g),
     dashboardCard.match(/bg-white|text-zinc|border-black/g),
     mobileNav.match(/bg-white|text-zinc|border-black/g),
-    mobileDrawer.match(/bg-white|text-zinc|border-black/g),
   ].filter(Boolean);
   assert.equal(offenders.length, 0, "hard-coded colors remain: " + JSON.stringify(offenders));
 });
@@ -62,14 +61,13 @@ test("V3-001: content animation never gates visibility", () => {
 });
 
 // ---- V3-002: mobile shell — primary loop and secondary modules stay independent ----
-test("V3-002: sidebar and bottom navigation are mutually exclusive and non-duplicative", () => {
+test("V3-002: desktop and mobile shell consume only the MVP registry", () => {
   assert.ok(appShell.includes('className="hidden md:block"'), "sidebar must be md-only");
   assert.ok(mobileNav.includes("md:hidden"), "bottom nav must be mobile-only");
-  assert.ok(mobileDrawer.includes("md:hidden"), "drawer must be mobile-only");
-  const tabHrefs = [...mobileNav.matchAll(/href: "(\/[a-z-]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(tabHrefs, ["/today", "/learning", "/review", "/knowledge"]);
-  assert.ok(mobileDrawer.includes("drawerKeys.includes(module.key)"));
-  assert.ok(mobileDrawer.includes("href={module.href}"), "drawer links navigate to modules");
+  assert.ok(sidebar.includes("mvpModuleRegistry"));
+  assert.ok(mobileNav.includes("mvpModuleRegistry"));
+  assert.equal(appShell.includes("MobileDrawer"), false);
+  assert.equal(topbar.includes("打开模块导航"), false);
 });
 
 test("V3-002: mobile nav handles safe-area inset", () => {
@@ -175,22 +173,21 @@ test("V3 calm day theme keeps truthful labels and semantic contrast tokens", () 
   assert.ok(todayView.includes("今日节奏"));
 });
 
-test("V3-009: Learning plans, Today executes, and Review owns reflection", () => {
-  assert.ok(learning.includes("scheduleLearningTask"));
-  assert.equal(learning.includes("加入今日"), false);
-  assert.equal(learning.includes('href="/today"'), false);
-  assert.equal(learning.includes("saveReview"), false);
-  assert.equal(learning.includes("rollDailyLoopForward"), false);
-  assert.equal(learning.includes("保存复盘"), false);
-  assert.ok(review.includes("saveReview"));
-  assert.ok(review.includes("rollDailyLoopForward"));
+test("V3-009: Learning creates, Today executes, and Review closes the loop", () => {
+  assert.ok(learning.includes("createLearningWorkspaceTask"));
+  assert.ok(learning.includes("ensureDefaultLearningWorkspace"));
+  assert.equal(learning.includes("saveWorkspaceReview"), false);
+  assert.ok(todayView.includes("startWorkspaceTask"));
+  assert.ok(todayView.includes("toggleWorkspaceSubtaskCompletion"));
+  assert.ok(review.includes("saveWorkspaceReview"));
+  assert.ok(review.includes("rollWorkspaceForward"));
 });
 
-test("Review and Settings replace placeholder pages with real repository actions", () => {
-  assert.ok(review.includes("saveDailyLoop(next)"));
-  assert.ok(review.includes("rollDailyLoopForward"));
+test("Review and Settings expose real local-first closure actions", () => {
+  assert.ok(review.includes("saveWorkspaceReview"));
+  assert.ok(review.includes("rollWorkspaceForward"));
+  assert.ok(settings.includes("确认导入"));
   assert.ok(settings.includes("导出数据"));
-  assert.ok(settings.includes("导入数据"));
   assert.ok(settings.includes("清空成长数据"));
 });
 
