@@ -39,6 +39,11 @@ export type LearningTaskSummary = {
   sourceEntityId: EntityId;
   sourceLabel: string;
   title: string;
+  durationMinutes: number;
+  priority: Task["priority"];
+  tags: string[];
+  subtasks: Task["subtasks"];
+  createdAt: IsoDateTime;
   dueAt?: string;
   status: "planned" | "active" | "done";
 };
@@ -349,6 +354,11 @@ export function summarizeTasksForToday(
       sourceEntityId: space.id,
       sourceLabel: space.name,
       title: task.title,
+      durationMinutes: task.durationMinutes,
+      priority: task.priority,
+      tags: [...task.tags],
+      subtasks: task.subtasks.map((subtask) => ({ ...subtask })),
+      createdAt: task.createdAt,
       dueAt: task.dueAt ?? undefined,
       status: task.status,
     }));

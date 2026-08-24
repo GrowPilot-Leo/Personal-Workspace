@@ -30,11 +30,10 @@ import {
 
 type ReviewDraft = {
   wins: string;
-  blockers: string;
   adjustment: string;
 };
 
-const emptyDraft: ReviewDraft = { wins: "", blockers: "", adjustment: "" };
+const emptyDraft: ReviewDraft = { wins: "", adjustment: "" };
 
 function localDateKey(date: Date): string {
   const year = date.getFullYear();
@@ -82,7 +81,6 @@ export function ReviewModule() {
       review
         ? {
             wins: review.wins,
-            blockers: review.blockers,
             adjustment: review.adjustment,
           }
         : emptyDraft,
@@ -106,40 +104,6 @@ export function ReviewModule() {
     () => (workspace ? buildDailyReviewSummary(workspace, dateKey) : null),
     [dateKey, workspace],
   );
-
-  const sevenDaySummary = useMemo(() => {
-    if (!workspace) {
-      return { days: 1, planned: 0, completed: 0, reviewed: 0 };
-    }
-    const dates = Array.from({ length: 7 }, (_, index) =>
-      offsetDateKey(dateKey, -index),
-    );
-    const dateSet = new Set(dates);
-    const summaries = dates.map((date) =>
-      buildDailyReviewSummary(workspace, date),
-    );
-    const workspaceDailyReviews = workspace.reviews.filter(
-      (review) =>
-        review.ownerModuleId === "workspace" &&
-        review.ownerEntityId === null &&
-        review.horizon === "daily" &&
-        dateSet.has(review.periodKey),
-    );
-    const observedDates = dates.filter(
-      (date) =>
-        workspace.tasks.some((task) => task.scheduledDate === date) ||
-        workspaceDailyReviews.some((review) => review.periodKey === date),
-    );
-    return {
-      days: Math.max(observedDates.length, 1),
-      planned: summaries.reduce((total, summary) => total + summary.planned, 0),
-      completed: summaries.reduce(
-        (total, summary) => total + summary.completed,
-        0,
-      ),
-      reviewed: workspaceDailyReviews.length,
-    };
-  }, [dateKey, workspace]);
 
   const recentReviews = useMemo(
     () =>
@@ -167,11 +131,11 @@ export function ReviewModule() {
     if (!workspace) return;
     const cleaned = {
       wins: draft.wins.trim(),
-      blockers: draft.blockers.trim(),
+      blockers: currentReview?.blockers ?? "",
       adjustment: draft.adjustment.trim(),
     };
-    if (!cleaned.wins && !cleaned.blockers && !cleaned.adjustment) {
-      setStatus("至少记录一项事实、阻塞或调整。");
+    if (!cleaned.wins && !cleaned.adjustment) {
+      setStatus("至少记录一项收获或调整。");
       return;
     }
 
@@ -181,7 +145,7 @@ export function ReviewModule() {
       new Date().toISOString(),
     );
     persist(next);
-    setDraft(cleaned);
+    setDraft({ wins: cleaned.wins, adjustment: cleaned.adjustment });
     setStatus("复盘已保存");
   }
 
@@ -211,44 +175,68 @@ export function ReviewModule() {
           复盘中心
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          记录事实、识别阻塞、确认下一步。复盘保存后才允许结转，避免计划失去依据。
+          用完成事实和下一步调整结束今天；保存后可手动顺延未完成任务。
         </p>
       </header>
 
       <ul
         className="grid list-none gap-4 sm:grid-cols-3"
-        aria-label="最近七日摘要"
+        aria-label="今日完成摘要"
       >
         <li className="calm-surface rounded-2xl p-5">
-          <Clock3 size={16} className="text-primary" aria-hidden="true" />
-          <strong className="mt-3 block text-2xl">
-            {sevenDaySummary.completed}/{sevenDaySummary.planned}
-          </strong>
-          <span className="text-xs text-muted-foreground">任务完成</span>
-        </li>
-        <li className="calm-surface rounded-2xl p-5">
-          <CalendarCheck
-            size={16}
-            className="text-primary"
-            aria-hidden="true"
-          />
-          <strong className="mt-3 block text-2xl">
-            {sevenDaySummary.reviewed}/{sevenDaySummary.days}
-          </strong>
-          <span className="text-xs text-muted-foreground">有记录的天数</span>
-        </li>
-        <li className="calm-surface rounded-2xl p-5">
-          <CheckCircle2
-            size={16}
-            className="text-primary"
-            aria-hidden="true"
-          />
+          <CheckCircle2 size={16} className="text-primary" aria-hidden="true" />
           <strong className="mt-3 block text-2xl">
             {currentSummary.completed}/{currentSummary.planned}
           </strong>
-          <span className="text-xs text-muted-foreground">今日任务完成</span>
+          <span className="text-xs text-muted-foreground">今日完成</span>
+        </li>
+        <li className="calm-surface rounded-2xl p-5">
+          <CalendarCheck size={16} className="text-primary" aria-hidden="true" />
+          <strong className="mt-3 block text-2xl">
+            {currentSummary.planned - currentSummary.completed}
+          </strong>
+          <span className="text-xs text-muted-foreground">今日未完成</span>
+        </li>
+        <li className="calm-surface rounded-2xl p-5">
+          <Clock3 size={16} className="text-primary" aria-hidden="true" />
+          <strong className="mt-3 block text-2xl">
+            {currentSummary.completedMinutes}
+          </strong>
+          <span className="text-xs text-muted-foreground">完成分钟</span>
         </li>
       </ul>
+
+      <article
+        aria-label="今日完成明细"
+        className="calm-surface rounded-3xl p-5 sm:p-6"
+      >
+        <h2 className="text-base font-semibold">今日完成明细</h2>
+        {currentSummary.completedItems.length ? (
+          <ul className="mt-4 list-none space-y-3">
+            {currentSummary.completedItems.map((item) => (
+              <li
+                className="rounded-2xl border border-border bg-card p-4"
+                key={item.id}
+              >
+                <strong className="text-sm">{item.title}</strong>
+                {item.subtasks.length ? (
+                  <ul className="mt-2 list-none space-y-1 text-xs text-muted-foreground">
+                    {item.subtasks.map((subtask) => (
+                      <li key={subtask.id}>
+                        {subtask.completed ? "✓" : "○"} {subtask.title}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            今天还没有完成任务。
+          </p>
+        )}
+      </article>
 
       <motion.article
         className="panel"
@@ -270,7 +258,7 @@ export function ReviewModule() {
 
         <form className="review-form" onSubmit={saveReview}>
           <label className="field">
-            <span>今天完成了什么、学会了什么？</span>
+            <span>今天完成了什么、学到了什么？</span>
             <textarea
               maxLength={800}
               onChange={(event) =>
@@ -285,22 +273,7 @@ export function ReviewModule() {
             />
           </label>
           <label className="field">
-            <span>哪里卡住了？</span>
-            <textarea
-              maxLength={800}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  blockers: event.target.value,
-                }))
-              }
-              placeholder="记录真正的阻塞原因，而不是笼统写“时间不够”。"
-              rows={3}
-              value={draft.blockers}
-            />
-          </label>
-          <label className="field">
-            <span>下一次准备怎么调整？</span>
+            <span>明天需要调整什么？</span>
             <textarea
               maxLength={800}
               onChange={(event) =>
@@ -330,8 +303,8 @@ export function ReviewModule() {
           <h2>确认下一天</h2>
           <p>
             {currentReview
-              ? "复盘已具备行动依据。归档后，已完成任务保留在原日期，符合条件的未完成任务自动结转。"
-              : "先保存今日复盘，再决定哪些任务需要结转。"}
+              ? "复盘已保存。你可以明确选择是否把未完成任务顺延到明天。"
+              : "先保存今日复盘，再决定是否顺延未完成任务。"}
           </p>
         </div>
         <button
@@ -340,7 +313,7 @@ export function ReviewModule() {
           onClick={startNextDay}
           type="button"
         >
-          <Archive size={16} aria-hidden="true" /> 归档并开始下一天
+          <Archive size={16} aria-hidden="true" /> 将未完成任务顺延到明天
         </button>
       </article>
 

@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildTodayViewState,
+  hasIncompleteSubtasks,
   startWorkspaceTask,
+  toggleWorkspaceSubtaskCompletion,
   toggleWorkspaceTaskCompletion,
 } from "./today-actions.ts";
 
@@ -31,6 +33,9 @@ function task(id, overrides = {}) {
     description: "",
     durationMinutes: 30,
     scheduledDate: DATE,
+    priority: "medium",
+    tags: [],
+    subtasks: [],
     status: "planned",
     dueAt: null,
     completedAt: null,
@@ -414,4 +419,75 @@ test("reviewDue is false when a Workspace daily review exists for the date", () 
   });
   const view = buildTodayViewState(ws, DATE);
   assert.equal(view.reviewDue, false);
+});
+
+test("Today projects task metadata and orders untimed planned tasks by priority then creation", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [
+      task("medium", { createdAt: "2026-08-06T07:00:00.000Z" }),
+      task("high-late", { priority: "high", createdAt: "2026-08-06T08:00:00.000Z", tags: ["重点"], subtasks: [{ id: "sub-1", title: "第一步", completed: false }] }),
+      task("high-early", { priority: "high", createdAt: "2026-08-06T06:00:00.000Z" }),
+      task("low", { priority: "low", createdAt: "2026-08-06T05:00:00.000Z" }),
+    ],
+  });
+  const view = buildTodayViewState(ws, DATE);
+  assert.deepEqual(view.items.map((item) => item.id), ["high-early", "high-late", "medium", "low"]);
+  assert.deepEqual(
+    {
+      priority: view.items[1].priority,
+      tags: view.items[1].tags,
+      subtasks: view.items[1].subtasks,
+      createdAt: view.items[1].createdAt,
+    },
+    {
+      priority: "high",
+      tags: ["重点"],
+      subtasks: [{ id: "sub-1", title: "第一步", completed: false }],
+      createdAt: "2026-08-06T08:00:00.000Z",
+    },
+  );
+});
+
+test("starting a task leaves exactly one eligible Learning task active", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [task("old", { status: "active" }), task("next")],
+  });
+  const next = startWorkspaceTask(ws, "next", NOW);
+  assert.deepEqual(next.tasks.map((task) => [task.id, task.status]), [
+    ["old", "planned"],
+    ["next", "active"],
+  ]);
+  assert.equal(next.tasks[0].updatedAt, NOW);
+});
+
+test("subtask toggle changes only the requested checklist item", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [task("t1", { subtasks: [
+      { id: "sub-1", title: "第一步", completed: false },
+      { id: "sub-2", title: "第二步", completed: false },
+    ] })],
+  });
+  const next = toggleWorkspaceSubtaskCompletion(ws, "t1", "sub-2", NOW);
+  assert.deepEqual(next.tasks[0].subtasks, [
+    { id: "sub-1", title: "第一步", completed: false },
+    { id: "sub-2", title: "第二步", completed: true },
+  ]);
+  assert.equal(next.tasks[0].status, "planned");
+  assert.equal(hasIncompleteSubtasks(next, "t1"), true);
+  assert.deepEqual(ws.tasks[0].subtasks[1].completed, false);
+});
+
+test("completion requires explicit allowance while subtasks remain unfinished", () => {
+  const ws = workspace({
+    learningSpaces: [activeSpace],
+    tasks: [task("t1", { subtasks: [{ id: "sub-1", title: "第一步", completed: false }] })],
+  });
+  assert.strictEqual(toggleWorkspaceTaskCompletion(ws, "t1", NOW), ws);
+  const confirmed = toggleWorkspaceTaskCompletion(ws, "t1", NOW, {
+    allowIncompleteSubtasks: true,
+  });
+  assert.equal(confirmed.tasks[0].status, "done");
 });

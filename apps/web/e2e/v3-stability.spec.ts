@@ -77,6 +77,63 @@ test("learning MVP creates a direct enriched task", async ({ page }) => {
   expect(stored.scheduledEvents).toBe(1);
 });
 
+test("learning today review MVP closes the local loop", async ({ page }) => {
+  await page.goto("/learning");
+  await page.getByLabel("任务标题").fill("完成 MVP 闭环");
+  await page.getByLabel("优先级").selectOption("high");
+  await page.getByLabel("标签").fill("MVP, 闭环");
+  await page.getByRole("button", { name: "添加子任务" }).click();
+  await page.getByRole("textbox", { name: "子任务 1", exact: true }).fill("验证今日执行");
+  await page.getByRole("button", { name: "添加子任务" }).click();
+  await page.getByRole("textbox", { name: "子任务 2", exact: true }).fill("记录复盘");
+  await page.getByRole("button", { name: "创建任务" }).click();
+
+  await page.goto("/today");
+  const timeline = page.getByRole("list", { name: "今日时间线" });
+  await expect(timeline).toContainText("高优先级");
+  await expect(timeline).toContainText("MVP");
+  await page.getByRole("button", { name: "开始任务：完成 MVP 闭环" }).click();
+  await page.getByRole("checkbox", { name: "完成子任务：验证今日执行" }).check();
+  await page.getByRole("checkbox", { name: "完成子任务：记录复盘" }).check();
+  await page.getByRole("button", { name: "完成任务：完成 MVP 闭环" }).click();
+  await expect(timeline).toContainText("已完成");
+
+  await page.goto("/review");
+  await expect(page.getByLabel("哪里卡住了？")).toHaveCount(0);
+  await page.getByLabel("今天完成了什么、学到了什么？").fill("主闭环已跑通");
+  await page.getByLabel("明天需要调整什么？").fill("继续缩小范围");
+  await page.getByRole("button", { name: "保存今日复盘" }).click();
+  await expect(page.getByText("复盘已保存", { exact: true })).toBeVisible();
+  await expect(page.getByRole("article", { name: "今日完成明细" })).toContainText(
+    "完成 MVP 闭环",
+  );
+
+  const stored = await page.evaluate((key) => {
+    const workspace = JSON.parse(window.localStorage.getItem(key)!);
+    return {
+      task: workspace.tasks.find(
+        (task: { title: string }) => task.title === "完成 MVP 闭环",
+      ),
+      review: workspace.reviews.find(
+        (review: { ownerModuleId: string; periodKey: string }) =>
+          review.ownerModuleId === "workspace",
+      ),
+    };
+  }, WORKSPACE_V2_KEY);
+  expect(stored.task).toMatchObject({
+    status: "done",
+    priority: "high",
+    tags: ["MVP", "闭环"],
+    subtasks: [
+      { title: "验证今日执行", completed: true },
+      { title: "记录复盘", completed: true },
+    ],
+  });
+  expect(stored.review).toMatchObject({
+    wins: "主闭环已跑通",
+    adjustment: "继续缩小范围",
+  });
+});
 test("core routes load without browser errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (message) => {
@@ -402,13 +459,12 @@ test("review saves Workspace V2 and rolls only eligible Learning tasks forward",
   );
 
   await page.goto("/review");
-  await page.getByLabel("今天完成了什么、学会了什么？").fill("完成了结转验证");
-  await page.getByLabel("哪里卡住了？").fill("暂无");
-  await page.getByLabel("下一次准备怎么调整？").fill("保持单任务推进");
+  await page.getByLabel("今天完成了什么、学到了什么？").fill("完成了结转验证");
+  await page.getByLabel("明天需要调整什么？").fill("保持单任务推进");
   await page.getByRole("button", { name: "保存今日复盘" }).click();
 
   await expect(page.getByText("复盘已保存")).toBeVisible();
-  const rollover = page.getByRole("button", { name: "归档并开始下一天" });
+  const rollover = page.getByRole("button", { name: "将未完成任务顺延到明天" });
   await expect(rollover).toBeEnabled();
   await rollover.click();
   await expect(page.locator('[aria-live="polite"]')).toContainText(
@@ -458,7 +514,7 @@ test("review saves Workspace V2 and rolls only eligible Learning tasks forward",
   expect(after.reviews).toHaveLength(1);
   expect(after.reviews[0]).toMatchObject({
     wins: "完成了结转验证",
-    blockers: "暂无",
+    blockers: "",
     adjustment: "保持单任务推进",
   });
   expect(after.activeTask).toMatchObject({
@@ -482,7 +538,7 @@ test("workspace data export, import, and clear preserve local boundaries", async
   await page.getByRole("button", { name: "添加每日任务" }).click();
 
   await page.goto("/review");
-  await page.getByLabel("今天完成了什么、学会了什么？").fill("记录备份证据");
+  await page.getByLabel("今天完成了什么、学到了什么？").fill("记录备份证据");
   await page.getByRole("button", { name: "保存今日复盘" }).click();
   await expect(page.getByText("复盘已保存")).toBeVisible();
 

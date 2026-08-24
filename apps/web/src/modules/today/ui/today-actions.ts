@@ -58,16 +58,9 @@ export function buildTodayViewState(
   const datedTasks = workspace.tasks.filter(
     (task) => task.scheduledDate === dateKey,
   );
-  const durationByTaskId = new Map(
-    datedTasks.map((task) => [task.id, task.durationMinutes]),
-  );
-
   const summaries: ModuleSummary[] = activeSpaces.map((space) => ({
     moduleId: "learning",
-    items: summarizeTasksForToday(space, datedTasks).map((summary) => ({
-      ...summary,
-      durationMinutes: durationByTaskId.get(summary.id) ?? 0,
-    })),
+    items: summarizeTasksForToday(space, datedTasks),
   }));
 
   const items = aggregateTodayItems(summaries);
@@ -126,9 +119,54 @@ export function startWorkspaceTask(
 
   return {
     ...workspace,
+    tasks: workspace.tasks.map((candidate) => {
+      if (candidate.id === taskId) {
+        return { ...candidate, status: "active", updatedAt: now };
+      }
+      if (
+        candidate.status === "active" &&
+        ownedActiveLearningTask(workspace, candidate.id) !== null
+      ) {
+        return { ...candidate, status: "planned", updatedAt: now };
+      }
+      return candidate;
+    }),
+    updatedAt: now,
+  };
+}
+
+export function hasIncompleteSubtasks(
+  workspace: WorkspaceStateV2,
+  taskId: EntityId,
+): boolean {
+  const task = workspace.tasks.find((candidate) => candidate.id === taskId);
+  return task?.subtasks.some((subtask) => !subtask.completed) ?? false;
+}
+
+export function toggleWorkspaceSubtaskCompletion(
+  workspace: WorkspaceStateV2,
+  taskId: EntityId,
+  subtaskId: EntityId,
+  now: IsoDateTime,
+): WorkspaceStateV2 {
+  if (ownedActiveLearningTask(workspace, taskId) === null) return workspace;
+  const task = workspace.tasks.find((candidate) => candidate.id === taskId)!;
+  if (task.status === "done") return workspace;
+  if (!task.subtasks.some((subtask) => subtask.id === subtaskId)) return workspace;
+
+  return {
+    ...workspace,
     tasks: workspace.tasks.map((candidate) =>
       candidate.id === taskId
-        ? { ...candidate, status: "active", updatedAt: now }
+        ? {
+            ...candidate,
+            subtasks: candidate.subtasks.map((subtask) =>
+              subtask.id === subtaskId
+                ? { ...subtask, completed: !subtask.completed }
+                : subtask,
+            ),
+            updatedAt: now,
+          }
         : candidate,
     ),
     updatedAt: now,
@@ -158,6 +196,7 @@ export function toggleWorkspaceTaskCompletion(
   workspace: WorkspaceStateV2,
   taskId: EntityId,
   now: IsoDateTime,
+  options: { allowIncompleteSubtasks?: boolean } = {},
 ): WorkspaceStateV2 {
   if (ownedActiveLearningTask(workspace, taskId) === null) return workspace;
   const task = workspace.tasks.find((candidate) => candidate.id === taskId)!;
@@ -172,6 +211,10 @@ export function toggleWorkspaceTaskCompletion(
       ),
       updatedAt: now,
     };
+  }
+
+  if (!options.allowIncompleteSubtasks && hasIncompleteSubtasks(workspace, taskId)) {
+    return workspace;
   }
 
   const alreadyRecorded = workspace.events.some(

@@ -383,6 +383,11 @@ test("Today summaries include only matching learning tasks and expose source-spa
     sourceEntityId: space.id,
     sourceLabel: space.name,
     title: ownedTask.title,
+    durationMinutes: ownedTask.durationMinutes,
+    priority: ownedTask.priority,
+    tags: ownedTask.tags,
+    subtasks: ownedTask.subtasks,
+    createdAt: ownedTask.createdAt,
     dueAt: ownedTask.dueAt,
     status: ownedTask.status,
   }]);

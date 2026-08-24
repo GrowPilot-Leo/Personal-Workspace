@@ -93,26 +93,26 @@ test("badge: external verification promotes to verified with evidence marker", (
   assert.equal(verified.evidence.length, 2);
 });
 
-test("today: aggregates and sorts module summaries by due time", () => {
+test("today: keeps the active item focused before planned items", () => {
   const items = aggregateTodayItems([
     {
       moduleId: "career",
       items: [
-        { id: "c1", sourceModule: "career", sourceEntityId: "role-1", sourceLabel: "职业", title: "职位任务", durationMinutes: 20, dueAt: "2026-08-06T15:00:00Z", status: "active" },
+        { id: "c1", sourceModule: "career", sourceEntityId: "role-1", sourceLabel: "职业", title: "职位任务", durationMinutes: 20, priority: "medium", tags: [], subtasks: [], createdAt: "2026-08-06T08:00:00Z", dueAt: "2026-08-06T15:00:00Z", status: "active" },
       ],
     },
     {
       moduleId: "learning",
       items: [
-        { id: "l1", sourceModule: "learning", sourceEntityId: "space-1", sourceLabel: "学习", title: "学习任务", durationMinutes: 30, dueAt: "2026-08-06T09:00:00Z", status: "planned" },
-        { id: "l2", sourceModule: "learning", sourceEntityId: "space-1", sourceLabel: "学习", title: "无截止任务", durationMinutes: 15, status: "planned" },
+        { id: "l1", sourceModule: "learning", sourceEntityId: "space-1", sourceLabel: "学习", title: "学习任务", durationMinutes: 30, priority: "high", tags: [], subtasks: [], createdAt: "2026-08-06T07:00:00Z", dueAt: "2026-08-06T09:00:00Z", status: "planned" },
+        { id: "l2", sourceModule: "learning", sourceEntityId: "space-1", sourceLabel: "学习", title: "无截止任务", durationMinutes: 15, priority: "low", tags: [], subtasks: [], createdAt: "2026-08-06T06:00:00Z", status: "planned" },
       ],
     },
   ]);
 
   assert.equal(items.length, 3);
-  assert.equal(items[0].id, "l1");
-  assert.equal(items[1].id, "c1");
+  assert.equal(items[0].id, "c1");
+  assert.equal(items[1].id, "l1");
   assert.equal(items[2].id, "l2");
 });
 
@@ -176,6 +176,9 @@ function reviewWorkspace() {
     description: "",
     durationMinutes,
     scheduledDate,
+    priority: "medium",
+    tags: [],
+    subtasks: [],
     status,
     dueAt: null,
     completedAt: status === "done" ? "2026-08-14T09:00:00.000Z" : null,
@@ -196,7 +199,10 @@ function reviewWorkspace() {
     tasks: [
       task("active-task", "learning", "active-space", "active", "2026-08-14", 30),
       task("planned-task", "learning", "planned-space", "planned", "2026-08-14", 20),
-      task("done-task", "learning", "active-space", "done", "2026-08-14", 40),
+      {
+        ...task("done-task", "learning", "active-space", "done", "2026-08-14", 40),
+        subtasks: [{ id: "done-subtask", title: "完成步骤", completed: true }],
+      },
       task("paused-task", "learning", "paused-space"),
       task("archived-task", "learning", "archived-space"),
       task("completed-space-task", "learning", "completed-space"),
@@ -210,14 +216,23 @@ function reviewWorkspace() {
   };
 }
 
-test("review: daily summary derives counts and minutes from the requested date", () => {
+test("review: daily summary derives counts, minutes, and completed details from eligible Learning tasks", () => {
   const summary = buildDailyReviewSummary(reviewWorkspace(), "2026-08-14");
   assert.deepEqual(summary, {
     date: "2026-08-14",
-    planned: 8,
+    planned: 6,
     completed: 1,
-    plannedMinutes: 215,
+    plannedMinutes: 165,
     completedMinutes: 40,
+    completedItems: [
+      {
+        id: "done-task",
+        title: "done-task",
+        subtasks: [
+          { id: "done-subtask", title: "完成步骤", completed: true },
+        ],
+      },
+    ],
   });
 });
 

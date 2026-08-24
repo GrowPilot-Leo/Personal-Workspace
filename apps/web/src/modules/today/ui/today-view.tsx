@@ -22,7 +22,9 @@ import type { WorkspaceStateV2 } from "@/core/workspace-state";
 import type { TodayItem } from "../public";
 import {
   buildTodayViewState,
+  hasIncompleteSubtasks,
   startWorkspaceTask,
+  toggleWorkspaceSubtaskCompletion,
   toggleWorkspaceTaskCompletion,
   type TodayViewState,
 } from "./today-actions.ts";
@@ -76,6 +78,12 @@ function rhythmStatus(
   if (!view.reviewDue) return "done";
   return allDone ? "current" : "pending";
 }
+
+const priorityLabels = {
+  high: "高优先级",
+  medium: "中优先级",
+  low: "低优先级",
+} as const;
 
 function actionSuggestion(view: TodayViewState): string {
   if (view.items.length === 0) return "先安排一个 10～60 分钟、能够验证结果的任务。";
@@ -132,16 +140,37 @@ export function TodayModule() {
   function toggleTask(item: TodayItem) {
     if (!workspace) return;
     const completing = item.status !== "done";
-    persist(
-      toggleWorkspaceTaskCompletion(
-        workspace,
-        item.id,
-        new Date().toISOString(),
-      ),
+    const incomplete = completing && hasIncompleteSubtasks(workspace, item.id);
+    if (
+      incomplete &&
+      !window.confirm("仍有未完成子任务，确定完成父任务吗？")
+    ) {
+      return;
+    }
+    const next = toggleWorkspaceTaskCompletion(
+      workspace,
+      item.id,
+      new Date().toISOString(),
+      { allowIncompleteSubtasks: incomplete },
     );
+    if (next === workspace) return;
+    persist(next);
     setAnnouncement(
       completing ? `已完成：${item.title}` : `已恢复为待完成：${item.title}`,
     );
+  }
+
+  function toggleSubtask(taskId: string, subtaskId: string, title: string) {
+    if (!workspace) return;
+    const next = toggleWorkspaceSubtaskCompletion(
+      workspace,
+      taskId,
+      subtaskId,
+      new Date().toISOString(),
+    );
+    if (next === workspace) return;
+    persist(next);
+    setAnnouncement("已更新子任务：" + title);
   }
 
   if (!hydrated || !view) {
@@ -375,6 +404,49 @@ export function TodayModule() {
                             {item.sourceLabel} · {item.durationMinutes} 分钟
                             {active ? " · 正在进行" : done ? " · 已完成" : ""}
                           </small>
+                          <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                              {priorityLabels[item.priority]}
+                            </span>
+                            {item.tags.map((tag) => (
+                              <span
+                                className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground"
+                                key={tag}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          {item.subtasks.length ? (
+                            <ul className="mt-3 list-none space-y-2">
+                              {item.subtasks.map((subtask) => (
+                                <li key={subtask.id}>
+                                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <input
+                                      aria-label={"完成子任务：" + subtask.title}
+                                      checked={subtask.completed}
+                                      disabled={done}
+                                      onChange={() =>
+                                        toggleSubtask(
+                                          item.id,
+                                          subtask.id,
+                                          subtask.title,
+                                        )
+                                      }
+                                      type="checkbox"
+                                    />
+                                    <span
+                                      className={
+                                        subtask.completed ? "line-through" : ""
+                                      }
+                                    >
+                                      {subtask.title}
+                                    </span>
+                                  </label>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
                         </div>
                         <button
                           aria-label={

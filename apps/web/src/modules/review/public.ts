@@ -6,6 +6,7 @@ import {
   type ReviewHorizon,
 } from "../../core/reviews.ts";
 import type { WorkspaceStateV2 } from "@/core/workspace-state";
+import type { TaskSubtask } from "@/core/tasks";
 
 export type ReviewSummary = {
   id: EntityId;
@@ -48,13 +49,28 @@ export type DailyReviewSummary = {
   completed: number;
   plannedMinutes: number;
   completedMinutes: number;
+  completedItems: Array<{
+    id: EntityId;
+    title: string;
+    subtasks: TaskSubtask[];
+  }>;
 };
 
 export function buildDailyReviewSummary(
   workspace: WorkspaceStateV2,
   dateKey: string,
 ): DailyReviewSummary {
-  const tasks = workspace.tasks.filter((task) => task.scheduledDate === dateKey);
+  const eligibleSpaceIds = new Set(
+    workspace.learningSpaces
+      .filter((space) => space.status !== "archived")
+      .map((space) => space.id),
+  );
+  const tasks = workspace.tasks.filter(
+    (task) =>
+      task.ownerModuleId === "learning" &&
+      eligibleSpaceIds.has(task.ownerEntityId) &&
+      task.scheduledDate === dateKey,
+  );
   const completed = tasks.filter((task) => task.status === "done");
   return {
     date: dateKey,
@@ -68,6 +84,11 @@ export function buildDailyReviewSummary(
       (total, task) => total + task.durationMinutes,
       0,
     ),
+    completedItems: completed.map((task) => ({
+      id: task.id,
+      title: task.title,
+      subtasks: task.subtasks.map((subtask) => ({ ...subtask })),
+    })),
   };
 }
 
