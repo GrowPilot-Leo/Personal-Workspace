@@ -166,6 +166,9 @@ test("createTask records explicit ownership and scheduled date", () => {
     description: "",
     durationMinutes: 25,
     scheduledDate: "2026-08-10",
+    priority: "medium",
+    tags: [],
+    subtasks: [],
     status: "planned",
     dueAt: null,
     completedAt: null,
@@ -266,5 +269,30 @@ test("Stage 3 domain event literals are exported as the contract source", () => 
     "learning.space.updated",
     "learning.space.paused",
     "learning.task.scheduled",
+  ]);
+});
+
+
+test("createTask normalizes priority, tags, and one-level subtasks", () => {
+  const task = createTask({
+    id: "task-metadata-1",
+    ownerModuleId: "learning",
+    ownerEntityId: "learning-space-1",
+    title: "  复习语法  ",
+    scheduledDate: "2026-08-24",
+    priority: "high",
+    tags: ["英语", "英语", " 语法 ", "", "第四个"],
+    subtasks: [
+      { id: "sub-1", title: "  整理例句  " },
+      { id: "sub-blank", title: "   " },
+    ],
+    now: "2026-08-24T08:00:00.000Z",
+  });
+
+  assert.equal(task.title, "复习语法");
+  assert.equal(task.priority, "high");
+  assert.deepEqual(task.tags, ["英语", "语法", "第四个"]);
+  assert.deepEqual(task.subtasks, [
+    { id: "sub-1", title: "整理例句", completed: false },
   ]);
 });

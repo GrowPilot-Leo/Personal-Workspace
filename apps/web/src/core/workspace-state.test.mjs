@@ -63,6 +63,9 @@ function task(overrides = {}) {
     description: "",
     durationMinutes: 30,
     scheduledDate: "2026-08-10",
+    priority: "medium",
+    tags: [],
+    subtasks: [],
     status: "planned",
     dueAt: null,
     completedAt: null,
@@ -236,4 +239,34 @@ test("every workspace update refreshes updatedAt", () => {
 
   state = appendDomainEvent(state, domainEvent(), "2026-08-10T09:05:00Z");
   assert.equal(state.updatedAt, "2026-08-10T09:05:00Z");
+});
+
+
+test("normalization keeps historical tasks and supplies new metadata defaults", () => {
+  const { priority, tags, subtasks, ...historical } = task();
+  assert.deepEqual({ priority, tags, subtasks }, {
+    priority: "medium",
+    tags: [],
+    subtasks: [],
+  });
+  const state = normalizeWorkspaceStateV2(
+    {
+      version: 2,
+      learningSpaces: [learningSpace()],
+      plans: [],
+      tasks: [historical],
+      reviews: [],
+      events: [],
+      updatedAt: CREATED_AT,
+    },
+    "2026-08-24T09:00:00Z",
+  );
+
+  assert.deepEqual(state.tasks[0], {
+    ...historical,
+    priority: "medium",
+    tags: [],
+    subtasks: [],
+  });
+  assert.equal("priority" in historical, false);
 });

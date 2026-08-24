@@ -29,6 +29,7 @@ const planHorizons = new Set<PlanHorizon>(["daily", "weekly", "monthly"]);
 const reviewHorizons = new Set<ReviewHorizon>(["daily", "weekly", "monthly"]);
 const taskOwnerModules = new Set<TaskOwnerModule>(["learning", "career", "english", "fitness"]);
 const taskStatuses = new Set<TaskStatus>(["planned", "active", "done"]);
+const taskPriorities = new Set(["high", "medium", "low"] as const);
 const domainEventTypes = new Set<DomainEventType>([
   "learning.space.created",
   "learning.space.updated",
@@ -182,14 +183,52 @@ function normalizeTask(value: unknown): Task | null {
     return null;
   }
 
+  const tags: string[] = [];
+  if (Array.isArray(value.tags)) {
+    for (const candidate of value.tags) {
+      if (typeof candidate !== "string") continue;
+      const tag = candidate.trim();
+      if (!tag || tags.includes(tag)) continue;
+      tags.push(tag);
+      if (tags.length === 3) break;
+    }
+  }
+
+  const subtasks: Task["subtasks"] = [];
+  const seenSubtasks = new Set<string>();
+  if (Array.isArray(value.subtasks)) {
+    for (const candidate of value.subtasks) {
+      if (
+        !isRecord(candidate) ||
+        !isText(candidate.id) ||
+        !isText(candidate.title) ||
+        typeof candidate.completed !== "boolean" ||
+        seenSubtasks.has(candidate.id)
+      ) {
+        continue;
+      }
+      seenSubtasks.add(candidate.id);
+      subtasks.push({
+        id: candidate.id,
+        title: candidate.title.trim(),
+        completed: candidate.completed,
+      });
+    }
+  }
+
   return {
     id: value.id,
     ownerModuleId: value.ownerModuleId as TaskOwnerModule,
     ownerEntityId: value.ownerEntityId,
-    title: value.title,
+    title: value.title.trim(),
     description: value.description,
     durationMinutes: value.durationMinutes,
     scheduledDate: value.scheduledDate,
+    priority: taskPriorities.has(value.priority as Task["priority"])
+      ? (value.priority as Task["priority"])
+      : "medium",
+    tags,
+    subtasks,
     status: value.status as TaskStatus,
     dueAt: value.dueAt,
     completedAt: value.completedAt,
@@ -197,7 +236,6 @@ function normalizeTask(value: unknown): Task | null {
     updatedAt: value.updatedAt,
   };
 }
-
 function normalizeReview(value: unknown): Review | null {
   if (
     !isRecord(value) ||

@@ -93,6 +93,9 @@ test("migration maps V1 daily loop into V2 entities and preserves a backup", () 
   const done = result.payload.tasks.find((t) => t.id === "t1");
   assert.equal(done.ownerModuleId, "learning");
   assert.equal(done.ownerEntityId, "learning-space-v1-daily-loop");
+  assert.equal(done.priority, "medium");
+  assert.deepEqual(done.tags, []);
+  assert.deepEqual(done.subtasks, []);
   assert.equal(done.scheduledDate, "2026-08-03");
   assert.equal(done.status, "done");
   assert.equal(done.completedAt, "2026-08-03T01:00:00Z");
@@ -498,7 +501,31 @@ test("recoverable workspace corruption is normalized before lower-precedence sou
     reviews: null,
   };
   const recoverableWorkspaceRaw = JSON.stringify(recoverableWorkspace);
-  const expectedWorkspace = { ...recoverableWorkspace, reviews: [] };
+  const expectedWorkspace = {
+    ...recoverableWorkspace,
+    tasks: recoverableWorkspace.tasks.map((task) => {
+      const {
+        status,
+        dueAt,
+        completedAt,
+        createdAt,
+        updatedAt,
+        ...beforeStatus
+      } = task;
+      return {
+        ...beforeStatus,
+        priority: "medium",
+        tags: [],
+        subtasks: [],
+        status,
+        dueAt,
+        completedAt,
+        createdAt,
+        updatedAt,
+      };
+    }),
+    reviews: [],
+  };
   const storage = memoryStorage({
     [WORKSPACE_V2_KEY]: recoverableWorkspaceRaw,
     [V2_MIGRATED_KEY]: intermediateRaw,
@@ -511,7 +538,7 @@ test("recoverable workspace corruption is normalized before lower-precedence sou
   assert.deepEqual(result.payload, expectedWorkspace);
   assert.equal(storage.getItem(WORKSPACE_V2_KEY), JSON.stringify(expectedWorkspace));
   assert.deepEqual(result.payload.learningSpaces, recoverableWorkspace.learningSpaces);
-  assert.deepEqual(result.payload.tasks, recoverableWorkspace.tasks);
+  assert.deepEqual(result.payload.tasks, expectedWorkspace.tasks);
   assert.equal(storage.getItem(V2_MIGRATED_KEY), intermediateRaw);
   assert.equal(storage.getItem(V1_DAILY_LOOP_BACKUP_KEY), null);
 });

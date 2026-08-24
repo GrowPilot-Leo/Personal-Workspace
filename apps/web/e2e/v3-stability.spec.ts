@@ -36,6 +36,47 @@ async function createLearningSpace(
   await dialog.getByRole("button", { name: "创建学习空间" }).click();
 }
 
+test("learning MVP creates a direct enriched task", async ({ page }) => {
+  await page.goto("/learning");
+  await expect(page.getByRole("heading", { name: "我的学习" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "新建学习空间" })).toHaveCount(0);
+
+  await page.getByLabel("任务标题").fill("复习语法");
+  await page.getByLabel("任务备注").fill("整理错题");
+  await page.getByLabel("优先级").selectOption("high");
+  await page.getByLabel("标签").fill("英语, 语法, 英语");
+  await page.getByRole("button", { name: "添加子任务" }).click();
+  await page.getByRole("textbox", { name: "子任务 1", exact: true }).fill("整理例句");
+  await page.getByRole("button", { name: "创建任务" }).click();
+
+  const card = page.getByRole("article", { name: "任务：复习语法" });
+  await expect(card).toContainText("高优先级");
+  await expect(card).toContainText("英语");
+  await expect(card).toContainText("语法");
+  await expect(card).toContainText("整理例句");
+
+  const stored = await page.evaluate((key) => {
+    const workspace = JSON.parse(window.localStorage.getItem(key)!);
+    return {
+      spaces: workspace.learningSpaces.length,
+      task: workspace.tasks[0],
+      scheduledEvents: workspace.events.filter(
+        (event: { eventType: string }) =>
+          event.eventType === "learning.task.scheduled",
+      ).length,
+    };
+  }, WORKSPACE_V2_KEY);
+  expect(stored.spaces).toBe(1);
+  expect(stored.task).toMatchObject({
+    title: "复习语法",
+    description: "整理错题",
+    priority: "high",
+    tags: ["英语", "语法"],
+    subtasks: [{ title: "整理例句", completed: false }],
+  });
+  expect(stored.scheduledEvents).toBe(1);
+});
+
 test("core routes load without browser errors", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (message) => {

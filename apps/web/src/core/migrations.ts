@@ -129,6 +129,9 @@ function normalizeV1Task(
         ? record.durationMinutes
         : 25,
     scheduledDate,
+    priority: "medium",
+    tags: [],
+    subtasks: [],
     status:
       typeof record.completedAt === "string"
         ? ("done" as const)
